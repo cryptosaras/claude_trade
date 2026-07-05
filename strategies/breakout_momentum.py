@@ -1,4 +1,9 @@
-"""Volume-confirmed range breakout for fast movers (mid caps + memecoins)."""
+"""Volume-confirmed range breakout for fast movers (mid caps + memecoins).
+
+RETIRED 2026-07-05: backtest 21d PF 0.41 (n=103, maxDD 44.7%), losing in BOTH
+intended regimes (BULL PF 0.65 n=53, SIDE PF 0.24 n=50); live day-1 confirmed
+(PF 0.31, n=8). Avg hold 0.47h on an 8h-breakout thesis — 1.5-ATR 5m stops get
+swept immediately and fees eat 36% of the loss. Not tuning distance from 1.1."""
 import sys
 from pathlib import Path
 
@@ -11,11 +16,11 @@ from app.common import indicators as ind  # noqa: E402
 class BreakoutMomentum(Strategy):
     meta = {
         "name": "breakout_momentum",
-        "version": 1,
+        "version": 2,
         "description": "5m close above 8h high with volume >2.5x average; funding-spike veto",
         "groups": ["mid_alts", "memes"],
         "regimes": ["BULL", "SIDE"],
-        "status": "active",
+        "status": "retired",
         "params": {
             "lookback_bars": 96,          # 8h of 5m bars
             "vol_mult": 2.5,
