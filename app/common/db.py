@@ -20,6 +20,10 @@ CREATE TABLE IF NOT EXISTS funding (
   symbol text NOT NULL, ts timestamptz NOT NULL, rate double precision,
   PRIMARY KEY (symbol, ts)
 );
+CREATE TABLE IF NOT EXISTS open_interest (
+  symbol text NOT NULL, ts timestamptz NOT NULL, oi double precision,
+  PRIMARY KEY (symbol, ts)
+);
 CREATE TABLE IF NOT EXISTS tickers (
   symbol text PRIMARY KEY, price double precision, change24h double precision,
   turnover24h double precision, funding_rate double precision, updated timestamptz

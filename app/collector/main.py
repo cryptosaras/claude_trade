@@ -1,5 +1,6 @@
 """Collector: backfills and keeps 1m/1h candles fresh for the universe,
-stores funding rates + tickers, and refreshes the market regime."""
+stores funding rates + tickers + open-interest history, and refreshes the
+market regime."""
 import datetime as dt
 import logging
 import time
@@ -90,6 +91,15 @@ def sync_tickers(tickers: list[dict], symbols: set[str]) -> None:
             "ON CONFLICT (symbol, ts) DO NOTHING",
             (t["symbol"], now.replace(minute=0, second=0, microsecond=0),
              t.get("fundingRate")),
+        )
+        # open interest (contracts), one row per 5 minutes — OI surges and
+        # divergences are strategy inputs once history accumulates
+        db.execute(
+            "INSERT INTO open_interest (symbol, ts, oi) VALUES (%s, %s, %s) "
+            "ON CONFLICT (symbol, ts) DO NOTHING",
+            (t["symbol"],
+             now.replace(minute=now.minute - now.minute % 5, second=0, microsecond=0),
+             t.get("holdVol")),
         )
 
 
