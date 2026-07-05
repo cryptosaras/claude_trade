@@ -1,8 +1,11 @@
 """Liquidity-sweep reversal (stop-hunt fade). An obvious multi-hour extreme
 holds resting stops; when a 5m wick sweeps it and the bar closes back inside
 on elevated volume, the stops are consumed and price tends to revert away
-from the level. Trades the reclaim, never the break: longs off swept lows in
-BULL/SIDE, shorts off swept highs in SIDE/BEAR."""
+from the level. Trades the reclaim, never the break, and only in trending
+regimes where a directional crowd exists to trap: longs off swept lows in
+BULL, shorts off swept highs in BEAR. v1 traded SIDE too — dev backtest
+showed SIDE reclaims are chop noise (PF 0.55, n=58) while BULL/BEAR were
+PF 1.42/1.07, so v2 removed SIDE."""
 import datetime as dt
 import sys
 from pathlib import Path
@@ -16,11 +19,11 @@ from app.common import indicators as ind  # noqa: E402
 class SweepReclaim(Strategy):
     meta = {
         "name": "sweep_reclaim",
-        "version": 1,
+        "version": 2,
         "description": "5m wick sweeps an 11h extreme and closes back inside on volume -> fade it",
         "groups": ["mid_alts", "memes"],
-        # direction is regime-gated inside: longs BULL/SIDE, shorts SIDE/BEAR
-        "regimes": ["BULL", "SIDE", "BEAR"],
+        # trend regimes only: longs off swept lows in BULL, shorts in BEAR
+        "regimes": ["BULL", "BEAR"],
         "status": "paused",  # becomes incubating only after passing the backtest gate
         "params": {
             "lookback_bars": 132,   # 11h of 5m bars define the reference extreme
@@ -62,7 +65,7 @@ class SweepReclaim(Strategy):
         close_pos = (float(sig["c"]) - float(sig["l"])) / rng
         px = ctx.price
 
-        if ctx.regime in ("BULL", "SIDE"):
+        if ctx.regime == "BULL":
             ref_low = float(ref["l"].min())
             if (float(sig["l"]) < ref_low - p["wick_atr"] * a
                     and float(sig["c"]) > ref_low
@@ -73,7 +76,7 @@ class SweepReclaim(Strategy):
                     return Signal("long", sl=sl, tp=px + p["tp_r"] * (px - sl),
                                   reason=f"swept 11h low {ref_low:.6g}, reclaimed")
 
-        if ctx.regime in ("SIDE", "BEAR"):
+        if ctx.regime == "BEAR":
             ref_high = float(ref["h"].max())
             if (float(sig["h"]) > ref_high + p["wick_atr"] * a
                     and float(sig["c"]) < ref_high
