@@ -19,19 +19,37 @@ groups:
     symbols: [BTC_USDT, ETH_USDT]
   large_alts:
     vol_profile: med
-    symbols: [SOL_USDT, BNB_USDT, XRP_USDT, ADA_USDT, AVAX_USDT, LINK_USDT, HYPE_USDT, TRX_USDT]
+    # +22 (2026-07-05): liquid established alts for the 4 large_alts strategies
+    # (range_fader / funding_skew_fade / ema_trend_rider / vwap_revert_short).
+    symbols: [SOL_USDT, BNB_USDT, XRP_USDT, ADA_USDT, AVAX_USDT, LINK_USDT, HYPE_USDT, TRX_USDT,
+              ZEC_USDT, TAO_USDT, WLD_USDT, XLM_USDT, ENA_USDT, ONDO_USDT, AAVE_USDT, HBAR_USDT,
+              BCH_USDT, LTC_USDT, XMR_USDT, FET_USDT, ATOM_USDT, UNI_USDT, ICP_USDT, DOT_USDT,
+              LDO_USDT, JUP_USDT, RENDER_USDT, POL_USDT, ETC_USDT, PYTH_USDT]
   mid_alts:
     vol_profile: high
-    symbols: [NEAR_USDT, APT_USDT, ARB_USDT, OP_USDT, SUI_USDT, SEI_USDT, TIA_USDT, INJ_USDT]
+    # +20 (2026-07-05): higher-beta alts for vwap_revert_short + sweep_reclaim.
+    symbols: [NEAR_USDT, APT_USDT, ARB_USDT, OP_USDT, SUI_USDT, SEI_USDT, TIA_USDT, INJ_USDT,
+              TLM_USDT, SYN_USDT, ETHFI_USDT, EIGEN_USDT, RPL_USDT, ORDI_USDT, KAS_USDT, GALA_USDT,
+              JASMY_USDT, DYDX_USDT, TRB_USDT, JTO_USDT, VIRTUAL_USDT, XTZ_USDT, DASH_USDT,
+              APE_USDT, CRV_USDT, GRASS_USDT, W_USDT, ALGO_USDT]
   memes:
     vol_profile: extreme
-    symbols: [DOGE_USDT, SHIB_USDT, PEPE_USDT, WIF_USDT, BONK_USDT, FLOKI_USDT]
+    # +8 (2026-07-05): a small bet for sweep_reclaim (incubating, the only meme
+    # consumer since pump_fade retired). Weighted to the liquid names; the sub-$1M
+    # ones (TURBO/ACT/GOAT/PNUT) are thin and on a short leash — prune if no edge.
+    symbols: [DOGE_USDT, SHIB_USDT, PEPE_USDT, WIF_USDT, BONK_USDT, FLOKI_USDT,
+              FARTCOIN_USDT, PENGU_USDT, PIPPIN_USDT, SPX_USDT, TURBO_USDT, ACT_USDT,
+              GOAT_USDT, PNUT_USDT]
 
 # Rules for the AI when editing this file:
 # - collect.*: tune freely with a stated reason (storage grows ~10MB/symbol/month).
-# - trading groups: keep the TOTAL across all groups <= ~60 symbols — the engine
-#   loads 3500 x 1m candles per symbol every tick on a 2-vCPU box. Rotate members
-#   in/out based on evidence; /api/universe "candidates" lists collected symbols
-#   (by turnover) that are not yet in any group. You may also create new groups
-#   (e.g. new_listings, ai_tokens) — strategies reference groups by name.
+# - trading groups: current TOTAL is 74. Measured 2026-07-05 on this 2-vCPU box,
+#   a full engine tick (load 3500x1m + 450x1h per symbol + core.step) is ~3.1s at
+#   74 symbols and ~4.0s at 100 — i.e. 16-20% of the 20s tick, so compute is NOT
+#   the binding limit up to ~100. The real limiters are collector freshness (steady
+#   state ~2 MEXC req/symbol/cycle; ~200 req/cycle at 99 collected symbols @8rps ≈
+#   ~40s candle freshness — fine for 1-12h strategies) and RAM (engine ~120MB, box
+#   has ~2GB free). Rotate members in/out based on evidence; /api/universe
+#   "candidates" lists collected symbols (by turnover) not yet in any group. You may
+#   also create new groups (e.g. new_listings, ai_tokens) — strategies ref by name.
 # - BTC_USDT stays in majors: it is the regime anchor.
