@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0B0E14">
 <title>TradeLab · MEXC Futures Paper</title>
 <style>
   :root{
@@ -99,6 +100,32 @@
     font-size:11.5px;overflow-x:auto;white-space:pre-wrap}
   .goalbar{height:8px;background:var(--bg);border-radius:4px;overflow:hidden;margin-top:4px}
   .goalbar div{height:100%;background:var(--accent)}
+  #candles{height:360px}#equity{height:140px}
+
+  /* ---------- mobile ---------- */
+  @media(max-width:720px){
+    body{font-size:13px}
+    .statusbar{gap:8px;padding:8px 10px}
+    .logo{font-size:13px}
+    .chip{font-size:10.5px;padding:2px 7px}
+    .mode-badge{font-size:9.5px;padding:3px 7px}
+    .kpi .val{font-size:13px}
+    .kpi .lbl{font-size:8.5px}
+    nav.tabs{top:auto;padding:0 4px}
+    nav.tabs button{padding:13px 12px;font-size:12.5px}
+    .view{padding:10px 8px 40px}
+    .dash{grid-template-columns:1fr;grid-template-areas:
+      "chart" "pos" "watch" "regime" "equity" "trades" "feed"}
+    #candles{height:260px}#equity{height:110px}
+    th,td{padding:5px 6px;font-size:11.5px}
+    .wl-row{padding:9px 6px}
+    .btform{flex-direction:column;align-items:stretch}
+    .btform .field select,.btform .field input{width:100%}
+    .btn-primary{padding:11px 18px}
+    .statcards{grid-template-columns:1fr 1fr;gap:8px}
+    .statcard .val{font-size:17px}
+    .row-actions button{padding:7px 12px}
+  }
 </style>
 </head>
 <body>
@@ -131,7 +158,7 @@
           <button class="tf" data-tf="1h">1h</button>
         </span></h3>
       <canvas class="big" id="candles" height="360"></canvas></div>
-    <div class="panel a-pos"><h3>Open positions</h3>
+    <div class="panel a-pos"><h3>Open positions <span class="right mono" id="pos-total"></span></h3>
       <div class="tablewrap"><table id="positions"><thead><tr>
         <th>Sym</th><th>Side</th><th>Strategy</th><th class="num">Entry</th>
         <th class="num">uPnL</th><th class="num">Held</th></tr></thead><tbody></tbody></table></div></div>
@@ -139,7 +166,7 @@
       <div class="pbody"><div class="ribbon" id="ribbon"></div></div></div>
     <div class="panel a-equity"><h3>Equity</h3><canvas class="big" id="equity" height="140"></canvas></div>
     <div class="panel a-feed"><h3>System feed</h3><div class="pbody" id="feed">loading…</div></div>
-    <div class="panel a-trades"><h3>Closed trades</h3>
+    <div class="panel a-trades"><h3>Closed trades <span class="right mono" id="trades-today"></span></h3>
       <div class="tablewrap"><table id="trades"><thead><tr>
         <th>Exit</th><th>Sym</th><th>Side</th><th>Strategy</th><th>Regime</th>
         <th class="num">Gross</th><th class="num">Fees+f</th><th class="num">Net</th>
@@ -153,6 +180,7 @@
     <div class="tablewrap"><table id="strat-table"><thead><tr>
       <th>Strategy</th><th>Status</th><th>Groups</th><th>Regimes</th>
       <th class="num">PF BULL</th><th class="num">PF BEAR</th><th class="num">PF SIDE</th>
+      <th class="num">Win %</th><th class="num">Hold</th>
       <th class="num">Net 14d</th><th></th></tr></thead><tbody></tbody></table></div></div>
   <div class="panel" style="margin-top:12px"><h3>Per-group performance</h3>
     <div class="tablewrap"><table id="group-table"><thead><tr>
@@ -188,6 +216,7 @@
 
 <script>
 const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const api=async(p,opt)=>{const r=await fetch(p,opt);if(!r.ok)throw new Error(p+': '+r.status);return r.json()};
 const fmt=(v,d=2)=>v==null?'—':(+v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
 const ago=ts=>{const s=(Date.now()-new Date(ts))/1e3;return s<90?`${s|0}s`:s<5400?`${s/60|0}m`:`${s/3600|0}h`};
@@ -253,7 +282,7 @@ async function loadChart(){
   }catch(e){console.error(e)}
 }
 function drawChart(){
-  const c=$('#candles'),ctx=c.getContext('2d'),w=c.clientWidth,h=360;
+  const c=$('#candles'),ctx=c.getContext('2d'),w=c.clientWidth,h=c.clientHeight||360;
   c.width=w*devicePixelRatio;c.height=h*devicePixelRatio;
   ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);ctx.clearRect(0,0,w,h);
   if(!CANDLES.length){ctx.fillStyle='#4A5568';ctx.fillText('no candles yet — collector is backfilling',20,40);return}
@@ -294,33 +323,40 @@ function drawChart(){
 async function loadPositions(){
   try{
     const ps=await api('/api/positions');
+    let total=0,known=0;
     $('#positions tbody').innerHTML=ps.length?ps.map(p=>{
       const sign=p.side==='long'?1:-1;
       const upnl=p.mark?((p.mark-p.entry_price)*p.qty*sign-p.fees-p.funding_paid):null;
-      return`<tr><td><b>${p.symbol.replace('_USDT','')}</b></td>
+      if(upnl!=null){total+=upnl;known++}
+      return`<tr><td><b>${esc(p.symbol.replace('_USDT',''))}</b></td>
       <td><span class="badge b-${p.side}">${p.side==='long'?'L':'S'} ${fmt(p.lev,1)}x</span></td>
-      <td class="dim" style="font-size:11px">${p.strategy}</td>
+      <td class="dim" style="font-size:11px">${esc(p.strategy)}</td>
       <td class="num">${fmt(p.entry_price,p.entry_price<0.01?7:4)}</td>
       <td class="num ${upnl>=0?'up':'down'}">${upnl==null?'—':(upnl>=0?'+':'')+fmt(upnl)}</td>
       <td class="num">${held(p.entry_ts)}</td></tr>`}).join('')
       :'<tr><td colspan="6" class="dim">no open positions</td></tr>';
+    $('#pos-total').innerHTML=known?`<span class="${total>=0?'up':'down'}">Σ ${total>=0?'+':''}$${fmt(total)}</span>`:'';
   }catch(e){console.error(e)}
 }
 
 async function loadTrades(){
   try{
     const ts=await api('/api/trades?limit=40');
+    const today=new Date().toISOString().slice(0,10);
+    const tt=ts.filter(t=>t.exit_ts.slice(0,10)===today);
+    const w=tt.filter(t=>t.net_pnl>0).length,net=tt.reduce((s,t)=>s+t.net_pnl,0);
+    $('#trades-today').innerHTML=tt.length?`today ${w}W/${tt.length-w}L · <span class="${net>=0?'up':'down'}">${net>=0?'+':''}$${fmt(net)}</span>`:'';
     $('#trades tbody').innerHTML=ts.length?ts.map(t=>`<tr>
       <td class="mono dim" style="font-size:11px">${new Date(t.exit_ts).toISOString().slice(5,16).replace('T',' ')}</td>
-      <td><b>${t.symbol.replace('_USDT','')}</b></td>
+      <td><b>${esc(t.symbol.replace('_USDT',''))}</b></td>
       <td><span class="badge b-${t.side}">${t.side==='long'?'L':'S'}</span></td>
-      <td class="dim" style="font-size:11px">${t.strategy}</td>
+      <td class="dim" style="font-size:11px">${esc(t.strategy)}</td>
       <td><span class="badge b-${t.regime_entry}">${t.regime_entry||'?'}</span></td>
       <td class="num">${fmt(t.gross_pnl)}</td>
       <td class="num down">−${fmt(t.fees+t.funding_paid)}</td>
       <td class="num ${t.net_pnl>=0?'up':'down'}">${t.net_pnl>=0?'+':''}${fmt(t.net_pnl)}</td>
       <td class="num">${held(t.entry_ts,t.exit_ts)}</td>
-      <td class="dim" style="font-size:11px">${t.exit_reason||''}</td></tr>`).join('')
+      <td class="dim" style="font-size:11px">${esc(t.exit_reason||'')}</td></tr>`).join('')
       :'<tr><td colspan="10" class="dim">no closed trades yet</td></tr>';
   }catch(e){console.error(e)}
 }
@@ -339,7 +375,7 @@ async function loadRegime(){
 async function loadEquity(){
   try{
     const eq=await api('/api/equity?days=60');
-    const c=$('#equity'),ctx=c.getContext('2d'),w=c.clientWidth,h=140;
+    const c=$('#equity'),ctx=c.getContext('2d'),w=c.clientWidth,h=c.clientHeight||140;
     c.width=w*devicePixelRatio;c.height=h*devicePixelRatio;
     ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);ctx.clearRect(0,0,w,h);
     if(eq.length<2){ctx.fillStyle='#4A5568';ctx.fillText('collecting equity history…',20,40);return}
@@ -357,7 +393,7 @@ async function loadFeed(){
   try{
     const ev=await api('/api/events?limit=40');
     $('#feed').innerHTML=ev.map(e=>`<div class="feed-item"><time>${ago(e.ts)}</time>
-      <div>${e.kind==='error'?'<span class="badge b-short">ERR</span> ':''}${e.message}</div></div>`).join('')||'no events';
+      <div>${e.kind==='error'?'<span class="badge b-short">ERR</span> ':''}${esc(e.message)}</div></div>`).join('')||'no events';
   }catch(e){console.error(e)}
 }
 
@@ -370,13 +406,19 @@ async function loadStrategies(){
     $('#strat-table tbody').innerHTML=d.strategies.map(s=>{
       const m=s.meta;
       const net=daily[s.name];
-      return`<tr><td><b>${s.name}</b> <span class="dim" style="font-size:10px">v${m.version}</span>
-      <br><span class="dim" style="font-size:10.5px">${m.description||''}</span></td>
+      const mine=d.stats_by_regime.filter(x=>x.strategy===s.name);
+      const n=mine.reduce((a,x)=>a+x.trades,0);
+      const winp=n?mine.reduce((a,x)=>a+x.win_rate*x.trades,0)/n:null;
+      const hold=n?mine.reduce((a,x)=>a+x.avg_hold_h*x.trades,0)/n:null;
+      return`<tr><td><b>${esc(s.name)}</b> <span class="dim" style="font-size:10px">v${m.version}</span>
+      <br><span class="dim" style="font-size:10.5px">${esc(m.description||'')}</span></td>
       <td><span class="badge b-${s.status}">${s.status.toUpperCase()}</span></td>
       <td class="dim" style="font-size:11px">${(m.groups||[]).join(', ')}</td>
       <td>${(m.regimes||[]).map(r=>`<span class="badge b-${r}">${r}</span>`).join(' ')}</td>
       <td class="num">${pf(s.name,'BULL')}</td><td class="num">${pf(s.name,'BEAR')}</td>
       <td class="num">${pf(s.name,'SIDE')}</td>
+      <td class="num">${winp==null?'—':fmt(winp,1)}</td>
+      <td class="num">${hold==null?'—':fmt(hold,1)+'h'}</td>
       <td class="num ${net>=0?'up':'down'}">${net==null?'—':(net>=0?'+':'')+fmt(net)}</td>
       <td class="row-actions">${s.status==='locked'?'<span class="dim" style="font-size:10px">locked 🔒</span>':
         `<button onclick="setStatus('${s.name}','${s.status==='paused'?'active':'paused'}')">${s.status==='paused'?'Resume':'Pause'}</button>`}</td></tr>`}).join('');
