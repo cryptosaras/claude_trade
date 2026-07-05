@@ -91,8 +91,9 @@ ssh ... "cd /opt/claude_trade && docker compose exec -T api python -m app.backte
 # get the dashboard password
 ssh ... "grep DASH_PASSWORD /opt/claude_trade/.env"
 
-# reset the paper account (archives nothing — trades stay in DB, equity resets)
-ssh ... "cd /opt/claude_trade && docker compose exec -T db psql -U trade -c \"UPDATE kv SET value='{\\\"value\\\": 10000}' WHERE key='paper_equity'\""
+# reset the paper account (equity is always start_equity + sum of closed PnL,
+# so archiving the old trades resets it; history stays queryable under mode='archived')
+ssh ... "cd /opt/claude_trade && docker compose exec -T db psql -U trade -c \"UPDATE positions SET mode='archived' WHERE mode='live'\""
 ```
 
 Deployment flow after any code/strategy change: **commit → push to `main` →

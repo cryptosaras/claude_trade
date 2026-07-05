@@ -15,12 +15,13 @@ from .loader import load_strategies
 log = logging.getLogger("engine")
 
 
-def load_candles(symbols: list[str], lookback: int) -> dict[str, pd.DataFrame]:
+def load_candles(symbols: list[str], lookback: int,
+                 tf: str = "1m") -> dict[str, pd.DataFrame]:
     out = {}
     for sym in symbols:
         rows = db.qd(
-            "SELECT ts, o, h, l, c, v FROM candles WHERE symbol=%s AND tf='1m' "
-            "ORDER BY ts DESC LIMIT %s", (sym, lookback))
+            "SELECT ts, o, h, l, c, v FROM candles WHERE symbol=%s AND tf=%s "
+            "ORDER BY ts DESC LIMIT %s", (sym, tf, lookback))
         if rows:
             out[sym] = pd.DataFrame(rows[::-1]).set_index("ts")
     return out
@@ -38,26 +39,30 @@ def funding_rates() -> dict[str, float]:
 
 def run() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
-    cfg = load_settings()
     db.wait_for_db()
     db.init_schema()
+    cfg = load_settings()
     broker = Broker(cfg, mode="db")
     db.event("system", f"engine started, equity {broker.equity:.2f}")
     last_snapshot = 0.0
     while True:
         t0 = time.time()
         try:
+            cfg = load_settings()      # re-read every tick: config edits apply live
+            broker.cfg = cfg["paper"]
             uni = load_universe()
             strategies = load_strategies(sync_db=True)
             now = dt.datetime.now(dt.timezone.utc)
             candles = load_candles(uni["symbols"], cfg["engine"]["candle_lookback"])
+            candles_1h = load_candles(uni["symbols"], 450, tf="1h")
             lf = db.kv_get("last_funding_settle")
             last_settle = dt.datetime.fromisoformat(lf["ts"]) if lf else None
             applied = core.step(
                 strategies=strategies, broker=broker, candles=candles,
-                groups=uni["symbol_group"], regime=current_regime(),
-                funding=funding_rates(), now=now, cfg=cfg,
-                last_funding_settle=last_settle, on_event=db.event)
+                candles_1h=candles_1h, groups=uni["symbol_group"],
+                regime=current_regime(), funding=funding_rates(), now=now,
+                cfg=cfg, last_funding_settle=last_settle, bars_per_check=1,
+                on_event=db.event)
             if applied:
                 db.kv_set("last_funding_settle", {"ts": applied.isoformat()})
             if time.time() - last_snapshot > 60:

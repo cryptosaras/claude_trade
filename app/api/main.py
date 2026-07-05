@@ -46,13 +46,15 @@ def index():
 @app.get("/api/overview", dependencies=[Depends(auth)])
 def overview():
     cfg = load_settings()
-    eq = db.kv_get("paper_equity")
-    equity = float(eq["value"]) if eq else cfg["paper"]["start_equity"]
     start_eq = cfg["paper"]["start_equity"]
+    realized = db.q("SELECT coalesce(sum(net_pnl),0) FROM positions "
+                    "WHERE status='closed' AND mode='live'")
+    equity = start_eq + float(realized[0][0])
     regime = db.qd("SELECT ts, label, confidence, meta FROM regime ORDER BY ts DESC LIMIT 1")
     today = db.q(
         "SELECT coalesce(sum(net_pnl),0), count(*) FROM positions "
-        "WHERE status='closed' AND mode='live' AND exit_ts::date = now()::date")
+        "WHERE status='closed' AND mode='live' "
+        "AND (exit_ts AT TIME ZONE 'UTC')::date = (now() AT TIME ZONE 'UTC')::date")
     open_pos = db.q("SELECT count(*) FROM positions WHERE status='open' AND mode='live'")
     col_hb = db.kv_get("collector_heartbeat") or {}
     eng_hb = db.kv_get("engine_heartbeat") or {}

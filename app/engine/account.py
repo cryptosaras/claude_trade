@@ -1,9 +1,10 @@
 """Paper broker: position accounting with fees, slippage and funding.
 One implementation, two storage modes — 'db' (live) and 'mem' (backtest) — so
-live paper trading and backtesting share the exact same money math."""
-import datetime as dt
+live paper trading and backtesting share the exact same money math.
 
-from psycopg.types.json import Json  # noqa: F401  (kept for parity of imports)
+Equity is always derived: start_equity + SUM(net_pnl of closed positions).
+Nothing is stored that could drift from the trade log."""
+import datetime as dt
 
 from ..common import db
 
@@ -13,10 +14,9 @@ class Broker:
         self.cfg = cfg["paper"]
         self.mode = mode
         if mode == "db":
-            eq = db.kv_get("paper_equity")
-            self.equity = float(eq["value"]) if eq else self.cfg["start_equity"]
-            if eq is None:
-                db.kv_set("paper_equity", {"value": self.equity})
+            row = db.q("SELECT coalesce(sum(net_pnl),0) FROM positions "
+                       "WHERE status='closed' AND mode='live'")
+            self.equity = self.cfg["start_equity"] + float(row[0][0])
         else:
             self.equity = start_equity or self.cfg["start_equity"]
             self.positions: list[dict] = []
@@ -29,18 +29,16 @@ class Broker:
         return [p for p in self.positions if p["status"] == "open"]
 
     def realized_today(self, now: dt.datetime) -> float:
-        day = now.strftime("%Y-%m-%d")
         if self.mode == "db":
             rows = db.q(
                 "SELECT coalesce(sum(net_pnl),0) FROM positions "
-                "WHERE status='closed' AND mode='live' AND exit_ts::date = %s::date",
-                (day,),
-            )
+                "WHERE status='closed' AND mode='live' "
+                "AND (exit_ts AT TIME ZONE 'UTC')::date = %s::date",
+                (now.strftime("%Y-%m-%d"),))
             return float(rows[0][0])
-        return sum(
-            p["net_pnl"] for p in self.closed
-            if p["exit_ts"].strftime("%Y-%m-%d") == day
-        )
+        day = now.strftime("%Y-%m-%d")
+        return sum(p["net_pnl"] for p in self.closed
+                   if p["exit_ts"].strftime("%Y-%m-%d") == day)
 
     def can_open(self, strategy: str, symbol: str, group: str, now: dt.datetime) -> bool:
         pos = self.open_positions()
@@ -63,6 +61,13 @@ class Broker:
              ts: dt.datetime, reason: str = "") -> dict | None:
         slip = self.cfg["slippage"]
         entry = price * (1 + slip) if side == "long" else price * (1 - slip)
+        # reject signals with SL/TP on the wrong side of entry (strategy bug)
+        ok = (sl < entry < tp) if side == "long" else (tp < entry < sl)
+        if not ok:
+            if self.mode == "db":
+                db.event("error", f"{strategy} rejected: bad SL/TP geometry "
+                                  f"{side} {symbol} e={entry:.6g} sl={sl:.6g} tp={tp:.6g}")
+            return None
         sl_dist = abs(entry - sl) / entry
         if sl_dist <= 0.0005:  # SL too tight to size sanely
             return None
@@ -105,7 +110,6 @@ class Broker:
                 "UPDATE positions SET status='closed', exit_price=%s, exit_ts=%s, "
                 "exit_reason=%s, gross_pnl=%s, fees=%s, net_pnl=%s WHERE id=%s",
                 (exit_p, ts, reason, gross, fees, net, pos["id"]))
-            db.kv_set("paper_equity", {"value": self.equity})
             db.event("trade",
                      f"CLOSE {pos['symbol']} {'+' if net >= 0 else ''}{net:.2f} USDT "
                      f"[{pos['strategy']}] {reason}", {"id": pos["id"]})

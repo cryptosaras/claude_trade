@@ -41,9 +41,11 @@ def sync_symbol(mexc: Mexc, symbol: str, tf: str, backfill_days: int) -> int:
     interval, step = TF_INTERVAL[tf]
     now = int(time.time())
     latest = last_ts(symbol, tf)
-    start = int(latest.timestamp()) + step if latest else now - backfill_days * 86400
+    # re-fetch from the last stored bar (inclusive): it was stored while still
+    # forming, and the upsert refreshes it with final o/h/l/c/v
+    start = int(latest.timestamp()) if latest else now - backfill_days * 86400
     total = 0
-    while start < now:
+    while start <= now:
         end = min(start + CHUNK * step, now)
         rows = mexc.klines(symbol, interval, start, end)
         total += upsert_candles(symbol, tf, rows)
@@ -105,7 +107,8 @@ def backfill_regime(cfg: dict) -> None:
             cur.execute(
                 "INSERT INTO regime (ts, label, confidence, meta) VALUES (%s, %s, 0.5, "
                 "'{\"backfilled\": true}') ON CONFLICT (ts) DO NOTHING",
-                (df.index[i], label))
+                # stamp at bar CLOSE: the label only becomes knowable then
+                (df.index[i] + dt.timedelta(hours=1), label))
     db.kv_set("regime_backfilled", {"rows": len(df)})
     db.event("system", f"regime history backfilled ({len(df)} hours)")
 
@@ -139,6 +142,7 @@ def run() -> None:
     last_regime = 0.0
     while True:
         try:
+            cfg = load_settings()  # re-read: config edits apply without restart
             uni = load_universe()  # re-read every cycle: AI may edit universe.yaml
             symbols = uni["symbols"]
             for sym in symbols:
@@ -156,7 +160,10 @@ def run() -> None:
             db.kv_set("collector_heartbeat", {"ts": time.time(), "symbols": len(symbols)})
         except Exception as e:  # noqa: BLE001
             log.exception("collector cycle failed")
-            db.event("error", f"collector: {e}")
+            try:
+                db.event("error", f"collector: {e}")
+            except Exception:  # noqa: BLE001  (the DB itself may be down)
+                pass
             time.sleep(10)
         time.sleep(15)
 

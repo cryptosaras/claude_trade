@@ -17,12 +17,13 @@ from ..engine.account import Broker
 from ..engine.loader import load_strategies
 
 
-def load_history(symbols: list[str], start: dt.datetime) -> dict[str, pd.DataFrame]:
+def load_history(symbols: list[str], start: dt.datetime,
+                 tf: str = "1m") -> dict[str, pd.DataFrame]:
     out = {}
     for sym in symbols:
         rows = db.qd(
-            "SELECT ts, o, h, l, c, v FROM candles WHERE symbol=%s AND tf='1m' "
-            "AND ts >= %s ORDER BY ts", (sym, start))
+            "SELECT ts, o, h, l, c, v FROM candles WHERE symbol=%s AND tf=%s "
+            "AND ts >= %s ORDER BY ts", (sym, tf, start))
         if rows:
             out[sym] = pd.DataFrame(rows).set_index("ts")
     return out
@@ -55,6 +56,7 @@ def run_backtest(strategy_name: str, days: int, step_minutes: int = 5,
     syms = symbols or uni["symbols"]
     start = dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=days)
     history = load_history(syms, start - dt.timedelta(minutes=cfg["engine"]["candle_lookback"]))
+    history_1h = load_history(syms, start - dt.timedelta(days=30), tf="1h")
     if not history:
         return {"error": "no candle history in DB for the requested window"}
     regimes = regime_series(start - dt.timedelta(days=2))
@@ -69,15 +71,23 @@ def run_backtest(strategy_name: str, days: int, step_minutes: int = 5,
     step_delta = dt.timedelta(minutes=step_minutes)
     while t < end:
         window = {}
+        window_1h = {}
         for sym, df in history.items():
-            pos = df.index.searchsorted(t, side="right")
+            # side="left" excludes the bar stamped `t` (it spans [t, t+1m) — the
+            # future). Only bars fully closed by `t` are visible, like live.
+            pos = df.index.searchsorted(t, side="left")
             if pos >= 60:
                 window[sym] = df.iloc[max(0, pos - lookback):pos]
+        for sym, df in history_1h.items():
+            pos = df.index.searchsorted(t - dt.timedelta(hours=1), side="left")
+            if pos >= 10:
+                window_1h[sym] = df.iloc[max(0, pos - 500):pos]
         if window:
             applied = core.step(
                 strategies=strategies, broker=broker, candles=window,
-                groups=uni["symbol_group"], regime=regime_at(regimes, t),
-                funding=funding, now=t, cfg=cfg, last_funding_settle=last_settle)
+                candles_1h=window_1h, groups=uni["symbol_group"],
+                regime=regime_at(regimes, t), funding=funding, now=t, cfg=cfg,
+                last_funding_settle=last_settle, bars_per_check=step_minutes)
             if applied:
                 last_settle = applied
         t += step_delta

@@ -44,7 +44,13 @@ def load_strategies(sync_db: bool = True) -> list:
             except Exception as e:  # noqa: BLE001
                 log.exception("failed to load %s", path.name)
                 if sync_db:
-                    db.event("error", f"strategy load failed: {path.name}: {e}")
+                    db.event("error", f"strategy load failed: {path.name}: {e}"
+                                      + (" — keeping previous version" if cached else ""))
+                if cached:
+                    # keep running the last good version; remember the bad mtime
+                    # so we don't retry (and spam) until the file changes again
+                    _cache[path.name] = (mtime, cached[1])
+                    strategies.append(cached[1])
                 continue
             if strat is None:
                 continue
@@ -57,12 +63,23 @@ def load_strategies(sync_db: bool = True) -> list:
         strategies.append(strat)
 
     if sync_db:
+        prev = {r[0]: (r[1], r[2]) for r in
+                db.q("SELECT name, status, meta->>'version' FROM strategies")}
         for s in strategies:
             m = s.meta
             db.execute(
                 "INSERT INTO strategies (name, status, meta) VALUES (%s, %s, %s) "
                 "ON CONFLICT (name) DO UPDATE SET meta=EXCLUDED.meta",
                 (m["name"], m.get("status", "active"), Json(m)))
+            # a version bump in the file is an intentional decision: adopt the
+            # file's status; otherwise the DB status (runtime override) wins
+            old = prev.get(m["name"])
+            if old and str(m.get("version")) != old[1] \
+                    and m.get("status", "active") != old[0]:
+                db.execute("UPDATE strategies SET status=%s, updated=now() WHERE name=%s",
+                           (m.get("status", "active"), m["name"]))
+                db.event("system", f"strategy {m['name']} v{m.get('version')}: "
+                                   f"status {old[0]} -> {m.get('status')}")
         rows = dict(db.q("SELECT name, status FROM strategies"))
         for s in strategies:
             s.runtime_status = rows.get(s.meta["name"], s.meta.get("status", "active"))

@@ -22,7 +22,10 @@ paper:
 
 engine:
   tick_seconds: 20
-  candle_lookback: 400     # 1m candles loaded per symbol per tick
+  # 1m candles per symbol per tick. Must cover the longest strategy warmup:
+  # ema_trend_rider needs 205 x 15m = 3075 minutes. Deep 1h history comes from
+  # the stored 1h table (ctx.tf('1h')), not from this window.
+  candle_lookback: 3500
 
 regime:
   # computed from BTC_USDT 1h candles
