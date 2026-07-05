@@ -68,9 +68,11 @@ def run_backtest(strategy_name: str, days: int, step_minutes: int = 5,
     last_settle = None
     step_delta = dt.timedelta(minutes=step_minutes)
     while t < end:
-        window = {sym: df.loc[df.index <= t].iloc[-lookback:]
-                  for sym, df in history.items()}
-        window = {s: d for s, d in window.items() if len(d) >= 60}
+        window = {}
+        for sym, df in history.items():
+            pos = df.index.searchsorted(t, side="right")
+            if pos >= 60:
+                window[sym] = df.iloc[max(0, pos - lookback):pos]
         if window:
             applied = core.step(
                 strategies=strategies, broker=broker, candles=window,
