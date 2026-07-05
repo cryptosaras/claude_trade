@@ -19,14 +19,14 @@ class PumpFade(Strategy):
     meta = {
         "name": "pump_fade",
         "version": 1,
-        "description": "Short the first lower-high crack after a >=5%/1h parabolic run",
+        "description": "Short the first lower-high crack after a >=4%/1h parabolic run",
         "groups": ["mid_alts", "memes"],
         "regimes": ["BULL", "SIDE", "BEAR"],
         "status": "paused",  # pending validation gate
         "params": {
             "run_bars": 12,        # pump window: 12 x 5m = 1h
-            "run_pct": 0.05,       # min gain low->high inside the window
-            "peak_within": 4,      # pump high must be <= this many bars old
+            "run_pct": 0.04,       # min gain low->high inside the window
+            "peak_within": 5,      # pump high must be <= this many bars old
             "atr_period": 14,
             "sl_atr_buf": 0.5,     # SL this far above the pump high
             "tp_r": 1.8,           # take-profit in R multiples
