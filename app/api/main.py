@@ -36,8 +36,10 @@ def startup() -> None:
     db.init_schema()
 
 
-@app.get("/", dependencies=[Depends(auth)])
+@app.get("/")
 def index():
+    # unauthenticated: serves only the static shell; every /api/* call needs auth,
+    # and the page shows its own login overlay on 401
     return FileResponse(ROOT / "ui" / "index.html")
 
 
