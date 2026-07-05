@@ -15,8 +15,9 @@ groups:
     symbols: [BTC_USDT, ETH_USDT]
   large_alts:
     vol_profile: med
-    # TON_USDT removed 2026-07-05: zombie contract on MEXC (lastPrice 0, no volume)
-    symbols: [SOL_USDT, BNB_USDT, XRP_USDT, ADA_USDT, AVAX_USDT, LINK_USDT, LTC_USDT, TRX_USDT]
+    # TON_USDT removed 2026-07-05: zombie contract on MEXC (lastPrice 0, no volume).
+    # HYPE added instead (230M/24h turnover). LTC considered but only 8M.
+    symbols: [SOL_USDT, BNB_USDT, XRP_USDT, ADA_USDT, AVAX_USDT, LINK_USDT, HYPE_USDT, TRX_USDT]
   mid_alts:
     vol_profile: high
     symbols: [NEAR_USDT, APT_USDT, ARB_USDT, OP_USDT, SUI_USDT, SEI_USDT, TIA_USDT, INJ_USDT]
