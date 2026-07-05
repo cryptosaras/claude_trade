@@ -1,4 +1,10 @@
-"""Parabolic pump fade. Fast movers (memes, small mid-caps) that go vertical
+"""KILLED AT THE GATE 2026-07-05, never traded live. Dev 21d (SIDE/BEAR)
+PF 1.24 n=19, but the edge was 7 SIDE trades at PF 1.89; held-out symbols
+21d: PF 0.41 n=4 (all BEAR; dev BEAR was itself 0.95). No confirmation ->
+rejected per gate (held-out PF < 1.1). Revisit only with materially more
+data (regime diversity), on a fresh held-out window.
+
+Parabolic pump fade. Fast movers (memes, small mid-caps) that go vertical
 attract late chasers; when the vertical leg cracks — a lower high followed by
 a close below the prior bar's low, with the peak only a few bars old — the
 chasers are trapped and the unwind is fast. Short the first crack, never the
@@ -18,13 +24,13 @@ from app.common import indicators as ind  # noqa: E402
 class PumpFade(Strategy):
     meta = {
         "name": "pump_fade",
-        "version": 1,
+        "version": 2,
         "description": "Short the first lower-high crack after a >=4%/1h parabolic run",
         "groups": ["mid_alts", "memes"],
         # BULL cut in dev: pumps resume there (PF 0.47 n=8; v1 dev 0/2).
         # The fade needs no trend behind the chasers: SIDE 1.6, BEAR 1.0.
         "regimes": ["SIDE", "BEAR"],
-        "status": "paused",  # pending validation gate
+        "status": "retired",  # failed held-out gate 2026-07-05, see docstring
         "params": {
             "run_bars": 12,        # pump window: 12 x 5m = 1h
             "run_pct": 0.04,       # min gain low->high inside the window
