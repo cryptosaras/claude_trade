@@ -50,9 +50,10 @@ class Broker:
             return False
         if any(p["symbol"] == symbol and p["strategy"] == strategy for p in pos):
             return False
-        day_pnl_pct = 100 * self.realized_today(now) / max(self.equity, 1)
-        if day_pnl_pct <= self.cfg["daily_stop_pct"]:
-            return False
+        if self.cfg["daily_stop_pct"] is not None:
+            day_pnl_pct = 100 * self.realized_today(now) / max(self.equity, 1)
+            if day_pnl_pct <= self.cfg["daily_stop_pct"]:
+                return False
         return True
 
     # ---------- lifecycle ----------

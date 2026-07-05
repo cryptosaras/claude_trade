@@ -20,7 +20,7 @@ paper:
   max_open_positions: 8   # enough slots for several incubating experiments to gather samples
   max_positions_per_group: 2   # crude correlation cap
   max_positions_per_strategy: 3
-  daily_stop_pct: -5.0     # halt new entries for the day below this equity change
+  daily_stop_pct: null     # disabled (strategy-testing phase, human 2026-07-06); null = no daily halt. Re-add once winners are found.
   max_hold_hours: 12       # global time stop (the 1-12h mandate)
 
 engine:
