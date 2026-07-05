@@ -21,7 +21,9 @@ class PumpFade(Strategy):
         "version": 1,
         "description": "Short the first lower-high crack after a >=4%/1h parabolic run",
         "groups": ["mid_alts", "memes"],
-        "regimes": ["BULL", "SIDE", "BEAR"],
+        # BULL cut in dev: pumps resume there (PF 0.47 n=8; v1 dev 0/2).
+        # The fade needs no trend behind the chasers: SIDE 1.6, BEAR 1.0.
+        "regimes": ["SIDE", "BEAR"],
         "status": "paused",  # pending validation gate
         "params": {
             "run_bars": 12,        # pump window: 12 x 5m = 1h
