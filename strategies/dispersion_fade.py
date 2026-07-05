@@ -7,7 +7,16 @@ up-outlier fade profit n=115, +0.33% gross / +0.17% net at 60m, 65% hit,
 building to +0.24% net at 120m; SIDE strongest, no negative regime.
 Down-outliers showed no edge (n=37, net -0.04%, hit 46%) -> shorts only.
 The cross-sectional condition is what separates this from the retired
-pump_fade: a coin pumping WITH its basket is market beta, not an event."""
+pump_fade: a coin pumping WITH its basket is market beta, not an event.
+
+RETIRED AT THE GATE 2026-07-05, never traded live. Held-out symbols 21d:
+pooled PF 0.87 (n=20); mid_alts-only held-out PF 0.58 (n=24) vs dev 1.23
+(n=41); every regime cell INVERTS across the symbol split (BEAR 1.72/0.55,
+BULL 1.40/0.25, SIDE 0.85/1.62) — noise, not signal. The fixed-horizon
+event edge (~+0.17% net at 60m) is too small to survive real trade
+mechanics: avg hold 0.46h, fees ~= 100% of net on the best run. Frequent-
+but-tiny edges can't be certified at n~50; rarer >=2.5% stretches give
+n~7/21d. Kept as documentation of the negative result."""
 import sys
 from pathlib import Path
 
@@ -18,12 +27,12 @@ from _base import Signal, Strategy  # noqa: E402
 class DispersionFade(Strategy):
     meta = {
         "name": "dispersion_fade",
-        "version": 1,
+        "version": 2,
         "description": "Short a coin stretched >=2% above its group basket's 1h return",
         "groups": ["mid_alts", "memes"],
         # event study: shorts net-positive in all three regimes (SIDE strongest)
         "regimes": ["BULL", "BEAR", "SIDE"],
-        "status": "paused",  # pending backtest gate (dev + held-out symbols)
+        "status": "retired",  # failed the held-out gate, see docstring — do not revive as-is
         "params": {
             "ret_bars": 60,         # return window: 60 x 1m = 1h
             "stretch_min": 0.02,    # coin 1h return minus basket mean, entry threshold
