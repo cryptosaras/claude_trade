@@ -1,0 +1,80 @@
+"""Live paper-trading engine: every tick, load fresh candles from the DB and
+run the shared decision loop against the paper broker."""
+import datetime as dt
+import logging
+import time
+
+import pandas as pd
+
+from ..common import db
+from ..common.config import load_settings, load_universe
+from . import core
+from .account import Broker
+from .loader import load_strategies
+
+log = logging.getLogger("engine")
+
+
+def load_candles(symbols: list[str], lookback: int) -> dict[str, pd.DataFrame]:
+    out = {}
+    for sym in symbols:
+        rows = db.qd(
+            "SELECT ts, o, h, l, c, v FROM candles WHERE symbol=%s AND tf='1m' "
+            "ORDER BY ts DESC LIMIT %s", (sym, lookback))
+        if rows:
+            out[sym] = pd.DataFrame(rows[::-1]).set_index("ts")
+    return out
+
+
+def current_regime() -> str:
+    rows = db.q("SELECT label FROM regime ORDER BY ts DESC LIMIT 1")
+    return rows[0][0] if rows else "SIDE"
+
+
+def funding_rates() -> dict[str, float]:
+    return {r[0]: float(r[1] or 0) for r in
+            db.q("SELECT symbol, funding_rate FROM tickers")}
+
+
+def run() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
+    cfg = load_settings()
+    db.wait_for_db()
+    db.init_schema()
+    broker = Broker(cfg, mode="db")
+    db.event("system", f"engine started, equity {broker.equity:.2f}")
+    last_snapshot = 0.0
+    while True:
+        t0 = time.time()
+        try:
+            uni = load_universe()
+            strategies = load_strategies(sync_db=True)
+            now = dt.datetime.now(dt.timezone.utc)
+            candles = load_candles(uni["symbols"], cfg["engine"]["candle_lookback"])
+            lf = db.kv_get("last_funding_settle")
+            last_settle = dt.datetime.fromisoformat(lf["ts"]) if lf else None
+            applied = core.step(
+                strategies=strategies, broker=broker, candles=candles,
+                groups=uni["symbol_group"], regime=current_regime(),
+                funding=funding_rates(), now=now, cfg=cfg,
+                last_funding_settle=last_settle, on_event=db.event)
+            if applied:
+                db.kv_set("last_funding_settle", {"ts": applied.isoformat()})
+            if time.time() - last_snapshot > 60:
+                db.execute(
+                    "INSERT INTO equity (ts, equity) VALUES (now(), %s) "
+                    "ON CONFLICT (ts) DO NOTHING", (broker.equity,))
+                last_snapshot = time.time()
+            db.kv_set("engine_heartbeat",
+                      {"ts": time.time(), "strategies": len(strategies)})
+        except Exception as e:  # noqa: BLE001
+            log.exception("engine tick failed")
+            try:
+                db.event("error", f"engine: {e}")
+            except Exception:  # noqa: BLE001
+                pass
+        time.sleep(max(1.0, cfg["engine"]["tick_seconds"] - (time.time() - t0)))
+
+
+if __name__ == "__main__":
+    run()

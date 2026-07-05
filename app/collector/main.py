@@ -1,0 +1,129 @@
+"""Collector: backfills and keeps 1m/1h candles fresh for the universe,
+stores funding rates + tickers, and refreshes the market regime."""
+import datetime as dt
+import logging
+import time
+
+import pandas as pd
+from psycopg.types.json import Json
+
+from ..common import db, regime
+from ..common.config import load_settings, load_universe
+from ..common.mexc import Mexc
+
+log = logging.getLogger("collector")
+
+TF_INTERVAL = {"1m": ("Min1", 60), "1h": ("Min60", 3600)}
+CHUNK = 1900  # candles per kline request (MEXC returns up to ~2000)
+
+
+def last_ts(symbol: str, tf: str):
+    rows = db.q("SELECT max(ts) FROM candles WHERE symbol=%s AND tf=%s", (symbol, tf))
+    return rows[0][0]
+
+
+def upsert_candles(symbol: str, tf: str, rows: list[tuple]) -> int:
+    if not rows:
+        return 0
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.executemany(
+                "INSERT INTO candles (symbol, tf, ts, o, h, l, c, v) "
+                "VALUES (%s, %s, to_timestamp(%s), %s, %s, %s, %s, %s) "
+                "ON CONFLICT (symbol, tf, ts) DO UPDATE SET "
+                "o=EXCLUDED.o, h=EXCLUDED.h, l=EXCLUDED.l, c=EXCLUDED.c, v=EXCLUDED.v",
+                [(symbol, tf, r[0], r[1], r[2], r[3], r[4], r[5]) for r in rows],
+            )
+    return len(rows)
+
+
+def sync_symbol(mexc: Mexc, symbol: str, tf: str, backfill_days: int) -> int:
+    interval, step = TF_INTERVAL[tf]
+    now = int(time.time())
+    latest = last_ts(symbol, tf)
+    start = int(latest.timestamp()) + step if latest else now - backfill_days * 86400
+    total = 0
+    while start < now:
+        end = min(start + CHUNK * step, now)
+        rows = mexc.klines(symbol, interval, start, end)
+        total += upsert_candles(symbol, tf, rows)
+        if not rows or rows[-1][0] <= start:
+            break
+        start = rows[-1][0] + step
+    return total
+
+
+def sync_tickers(mexc: Mexc, symbols: set[str]) -> None:
+    now = dt.datetime.now(dt.timezone.utc)
+    for t in mexc.tickers():
+        if t.get("symbol") not in symbols:
+            continue
+        db.execute(
+            "INSERT INTO tickers (symbol, price, change24h, turnover24h, funding_rate, updated) "
+            "VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT (symbol) DO UPDATE SET "
+            "price=EXCLUDED.price, change24h=EXCLUDED.change24h, "
+            "turnover24h=EXCLUDED.turnover24h, funding_rate=EXCLUDED.funding_rate, "
+            "updated=EXCLUDED.updated",
+            (t["symbol"], t.get("lastPrice"), t.get("riseFallRate"),
+             t.get("amount24"), t.get("fundingRate"), now),
+        )
+        db.execute(
+            "INSERT INTO funding (symbol, ts, rate) VALUES (%s, %s, %s) "
+            "ON CONFLICT (symbol, ts) DO NOTHING",
+            (t["symbol"], now.replace(minute=0, second=0, microsecond=0),
+             t.get("fundingRate")),
+        )
+
+
+def refresh_regime(cfg: dict) -> None:
+    rows = db.qd(
+        "SELECT ts, o, h, l, c, v FROM candles WHERE symbol='BTC_USDT' AND tf='1h' "
+        "ORDER BY ts DESC LIMIT %s", (cfg["regime"]["ema_slow"] + 60,),
+    )
+    if not rows:
+        return
+    df = pd.DataFrame(rows[::-1]).set_index("ts")
+    label, conf, meta = regime.detect(df, cfg["regime"])
+    prev = db.q("SELECT label FROM regime ORDER BY ts DESC LIMIT 1")
+    db.execute(
+        "INSERT INTO regime (ts, label, confidence, meta) VALUES (now(), %s, %s, %s) "
+        "ON CONFLICT (ts) DO NOTHING",
+        (label, conf, Json(meta)),
+    )
+    if prev and prev[0][0] != label:
+        db.event("regime", f"Regime change: {prev[0][0]} -> {label}", meta)
+
+
+def run() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
+    cfg = load_settings()
+    mexc = Mexc(cfg["mexc"]["base_url"], cfg["mexc"]["max_requests_per_sec"])
+    db.wait_for_db()
+    db.init_schema()
+    db.event("system", "collector started")
+    last_regime = 0.0
+    while True:
+        try:
+            uni = load_universe()  # re-read every cycle: AI may edit universe.yaml
+            symbols = uni["symbols"]
+            for sym in symbols:
+                n = sync_symbol(mexc, sym, "1m", cfg["mexc"]["backfill_days"])
+                if n > 500:
+                    log.info("backfilled %s 1m: %d candles", sym, n)
+            # 1h only needed for BTC (regime) but cheap to keep for all
+            for sym in symbols:
+                sync_symbol(mexc, sym, "1h", cfg["mexc"]["backfill_days_1h"])
+            sync_tickers(mexc, set(symbols))
+            if time.time() - last_regime > cfg["regime"]["refresh_seconds"]:
+                refresh_regime(cfg)
+                last_regime = time.time()
+            db.kv_set("collector_heartbeat", {"ts": time.time(), "symbols": len(symbols)})
+        except Exception as e:  # noqa: BLE001
+            log.exception("collector cycle failed")
+            db.event("error", f"collector: {e}")
+            time.sleep(10)
+        time.sleep(15)
+
+
+if __name__ == "__main__":
+    run()

@@ -1,0 +1,66 @@
+name: claude_trade
+
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: trade
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: trade
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trade"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    # NOT published: only reachable from the other containers
+
+  collector:
+    build: .
+    restart: unless-stopped
+    command: python -m app.collector.main
+    environment: &appenv
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_HOST: db
+      DASH_PASSWORD: ${DASH_PASSWORD}
+      TZ: UTC
+    volumes:
+      # bind-mounted so AI edits via git autopull take effect without rebuild
+      - ./strategies:/srv/strategies
+      - ./config:/srv/config
+      - ./ui:/srv/ui
+    depends_on:
+      db:
+        condition: service_healthy
+
+  engine:
+    build: .
+    restart: unless-stopped
+    command: python -m app.engine.main
+    environment: *appenv
+    volumes:
+      - ./strategies:/srv/strategies
+      - ./config:/srv/config
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: .
+    restart: unless-stopped
+    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8420
+    environment: *appenv
+    volumes:
+      - ./strategies:/srv/strategies
+      - ./config:/srv/config
+      - ./ui:/srv/ui
+    ports:
+      - "8420:8420"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  dbdata:

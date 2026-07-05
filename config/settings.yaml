@@ -1,0 +1,41 @@
+# System settings. AI may tune the "paper" section only with good reason;
+# fees/slippage must stay realistic — lowering them fakes profitability.
+
+mexc:
+  base_url: https://contract.mexc.com
+  # polite client-side throttle, MEXC contract API allows much more
+  max_requests_per_sec: 5
+  backfill_days: 30        # 1m candles per symbol on first run
+  backfill_days_1h: 180    # 1h candles (regime detection needs EMA200 on 1h)
+
+paper:
+  start_equity: 10000.0
+  fee_taker: 0.0005        # 0.05% per side, conservative for MEXC futures
+  slippage: 0.0003         # 0.03% applied on entry and exit
+  risk_per_trade: 0.01     # fraction of equity risked between entry and SL
+  max_leverage: 3.0
+  max_open_positions: 6
+  max_positions_per_group: 2   # crude correlation cap
+  max_positions_per_strategy: 3
+  daily_stop_pct: -5.0     # halt new entries for the day below this equity change
+  max_hold_hours: 12       # global time stop (the 1-12h mandate)
+
+engine:
+  tick_seconds: 20
+  candle_lookback: 400     # 1m candles loaded per symbol per tick
+
+regime:
+  # computed from BTC_USDT 1h candles
+  ema_fast: 50
+  ema_slow: 200
+  adx_period: 14
+  adx_trend_min: 20        # below this => SIDE regardless of slope
+  refresh_seconds: 300
+
+goal:
+  # THE GOAL: find strategies that sustain >= 2%/day net PnL (on allocated equity).
+  # When a strategy meets this, the AI must set its status to "locked":
+  # locked strategies keep trading but must NOT be edited — move on and find the next one.
+  daily_pnl_pct: 2.0
+  rolling_days: 14
+  min_trades: 30

@@ -1,0 +1,29 @@
+# Coin universe, organized into behavior groups.
+# THE AI MANAGES THIS FILE: it may add/remove symbols and regroup them based on
+# evidence (liquidity, volatility profile, correlation). Collector re-reads it
+# every cycle; new symbols are backfilled automatically, removed symbols stop
+# collecting (history is kept).
+#
+# Groups matter because strategies declare which groups they trade.
+# BTC does not move like a 20M-mcap memecoin — never assume one strategy fits all.
+#
+# vol_profile is a human/AI hint, not used by code: low/med/high/extreme.
+
+groups:
+  majors:
+    vol_profile: low
+    symbols: [BTC_USDT, ETH_USDT]
+  large_alts:
+    vol_profile: med
+    symbols: [SOL_USDT, BNB_USDT, XRP_USDT, ADA_USDT, AVAX_USDT, LINK_USDT, TON_USDT, TRX_USDT]
+  mid_alts:
+    vol_profile: high
+    symbols: [NEAR_USDT, APT_USDT, ARB_USDT, OP_USDT, SUI_USDT, SEI_USDT, TIA_USDT, INJ_USDT]
+  memes:
+    vol_profile: extreme
+    symbols: [DOGE_USDT, SHIB_USDT, PEPE_USDT, WIF_USDT, BONK_USDT, FLOKI_USDT]
+
+# Rules the AI should respect when editing the universe:
+# - max 40 symbols total (VPS resource cap)
+# - only contracts with 24h turnover >= $20M (check /api/universe candidates)
+# - BTC_USDT must always stay (regime anchor)
