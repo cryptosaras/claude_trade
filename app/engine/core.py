@@ -18,7 +18,9 @@ class Ctx:
 
     def __init__(self, symbol: str, group: str, df1m: pd.DataFrame, regime: str,
                  funding_rate: float, now: dt.datetime,
-                 df1h: pd.DataFrame | None = None):
+                 df1h: pd.DataFrame | None = None,
+                 candles: dict[str, pd.DataFrame] | None = None,
+                 groups: dict[str, str] | None = None):
         self.symbol = symbol
         self.group = group
         self.df = df1m            # 1m OHLCV, ascending ts index, up to `now`
@@ -26,6 +28,8 @@ class Ctx:
         self.regime = regime
         self.funding = funding_rate or 0.0
         self.now = now
+        self.candles = candles or {}   # every loaded symbol -> 1m df (cross-asset view)
+        self.sym_group = groups or {}  # symbol -> trading group, full universe
         self._tf_cache: dict[str, pd.DataFrame] = {}
 
     def tf(self, rule: str) -> pd.DataFrame:
@@ -41,15 +45,28 @@ class Ctx:
     def price(self) -> float:
         return float(self.df["c"].iloc[-1])
 
+    @property
+    def btc(self) -> pd.DataFrame | None:
+        """BTC 1m candles up to `now` (regime anchor / cross-asset signals)."""
+        return self.candles.get("BTC_USDT")
+
+    def peers(self) -> dict[str, pd.DataFrame]:
+        """1m candles of every symbol in this symbol's group (incl. itself)."""
+        return {s: df for s, df in self.candles.items()
+                if self.sym_group.get(s) == self.group}
+
 
 def step(*, strategies: list, broker, candles: dict[str, pd.DataFrame],
          groups: dict[str, str], regime: str, funding: dict[str, float],
          now: dt.datetime, cfg: dict, last_funding_settle: dt.datetime | None,
          candles_1h: dict[str, pd.DataFrame] | None = None,
-         bars_per_check: int = 1, on_event=None) -> dt.datetime | None:
+         bars_per_check: int = 1, tradable: set | None = None,
+         on_event=None) -> dt.datetime | None:
     """One decision cycle. candles: symbol -> 1m df (history up to `now`).
     bars_per_check: how many of the newest 1m bars to scan for SL/TP hits
     (1 for live ticks; the step size for backtests so no bar goes unchecked).
+    tradable: if set, entries are restricted to these symbols — cross-symbol
+    context (baskets, ctx.btc) still sees every symbol in `candles`.
     Returns the newest funding boundary applied (caller persists it)."""
     emit = on_event or (lambda kind, msg: None)
     candles_1h = candles_1h or {}
@@ -62,7 +79,8 @@ def step(*, strategies: list, broker, candles: dict[str, pd.DataFrame],
                 return None
             ctxs[symbol] = Ctx(symbol, groups.get(symbol, "?"), df, regime,
                                funding.get(symbol, 0.0), now,
-                               df1h=candles_1h.get(symbol))
+                               df1h=candles_1h.get(symbol),
+                               candles=candles, groups=groups)
         return ctxs[symbol]
 
     # ---- funding settlements (00/08/16 UTC): apply every missed boundary ----
@@ -121,6 +139,8 @@ def step(*, strategies: list, broker, candles: dict[str, pd.DataFrame],
             continue
         for group in m.get("groups", []):
             for symbol in [s for s, g in groups.items() if g == group]:
+                if tradable is not None and symbol not in tradable:
+                    continue
                 c = ctx_for(symbol)
                 if c is None:
                     continue

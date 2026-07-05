@@ -81,8 +81,12 @@ def run_backtest(strategy_name: str, days: int, step_minutes: int = 5,
         s.runtime_status = "active"  # backtest ignores pause/retire status
     syms = symbols or uni["symbols"]
     start = dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=days)
-    history = load_history(syms, start - dt.timedelta(minutes=cfg["engine"]["candle_lookback"]))
-    history_1h = load_history(syms, start - dt.timedelta(days=30), tf="1h")
+    # full-universe history: --symbols restricts what may be TRADED, not what a
+    # strategy SEES — cross-symbol signals (group baskets, ctx.btc) must be
+    # computed from the same symbols live and in symbol-split holdouts
+    history = load_history(uni["symbols"],
+                           start - dt.timedelta(minutes=cfg["engine"]["candle_lookback"]))
+    history_1h = load_history(uni["symbols"], start - dt.timedelta(days=30), tf="1h")
     if not history:
         return {"error": "no candle history in DB for the requested window"}
     regimes = regime_series(start - dt.timedelta(days=2))
@@ -118,7 +122,8 @@ def run_backtest(strategy_name: str, days: int, step_minutes: int = 5,
                 strategies=strategies, broker=broker, candles=window,
                 candles_1h=window_1h, groups=uni["symbol_group"],
                 regime=regime_at(regimes, t), funding=funding, now=t, cfg=cfg,
-                last_funding_settle=last_settle, bars_per_check=step_minutes)
+                last_funding_settle=last_settle, bars_per_check=step_minutes,
+                tradable=set(syms))
             if applied:
                 last_settle = applied
         t += step_delta
