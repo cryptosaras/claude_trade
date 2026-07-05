@@ -20,7 +20,10 @@ def load_universe() -> dict:
         raw = yaml.safe_load(f)
     groups = {g: spec["symbols"] for g, spec in raw["groups"].items()}
     sym_group = {s: g for g, syms in groups.items() for s in syms}
-    return {"groups": groups, "symbol_group": sym_group, "symbols": list(sym_group)}
+    collect = raw.get("collect", {}) or {}
+    return {"groups": groups, "symbol_group": sym_group, "symbols": list(sym_group),
+            "collect": {"min_turnover_usd": float(collect.get("min_turnover_usd", 5e6)),
+                        "max_symbols": int(collect.get("max_symbols", 900))}}
 
 
 def db_dsn() -> str:

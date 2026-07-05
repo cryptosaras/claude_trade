@@ -55,9 +55,25 @@ def sync_symbol(mexc: Mexc, symbol: str, tf: str, backfill_days: int) -> int:
     return total
 
 
-def sync_tickers(mexc: Mexc, symbols: set[str]) -> None:
+def discover_symbols(tickers: list[dict], group_symbols: set[str], collect_cfg: dict) -> list[str]:
+    """Group symbols are always collected. Everything else with 24h turnover
+    >= min_turnover_usd is added too, ranked by turnover, up to max_symbols
+    total — this is how new listings and pumping coins appear automatically."""
+    min_turnover = collect_cfg["min_turnover_usd"]
+    qualifying = sorted(
+        (t for t in tickers if t.get("symbol", "").endswith("_USDT")
+         and (t.get("lastPrice") or 0) > 0
+         and (t.get("amount24") or 0) >= min_turnover
+         and t["symbol"] not in group_symbols),
+        key=lambda t: -(t.get("amount24") or 0),
+    )
+    ordered = list(group_symbols) + [t["symbol"] for t in qualifying]
+    return ordered[:collect_cfg["max_symbols"]]
+
+
+def sync_tickers(tickers: list[dict], symbols: set[str]) -> None:
     now = dt.datetime.now(dt.timezone.utc)
-    for t in mexc.tickers():
+    for t in tickers:
         if t.get("symbol") not in symbols:
             continue
         db.execute(
@@ -144,7 +160,12 @@ def run() -> None:
         try:
             cfg = load_settings()  # re-read: config edits apply without restart
             uni = load_universe()  # re-read every cycle: AI may edit universe.yaml
-            symbols = uni["symbols"]
+            group_symbols = set(uni["symbols"])  # the actively-TRADED symbols
+            tickers = mexc.tickers()
+            # COLLECTED symbols: every group symbol plus anything liquid enough
+            # to qualify (config/universe.yaml: collect.*) — auto-discovered,
+            # no manual list. Trading only ever happens on group_symbols.
+            symbols = discover_symbols(tickers, group_symbols, uni["collect"])
             for sym in symbols:
                 n = sync_symbol(mexc, sym, "1m", cfg["mexc"]["backfill_days"])
                 if n > 500:
@@ -152,12 +173,14 @@ def run() -> None:
             # 1h only needed for BTC (regime) but cheap to keep for all
             for sym in symbols:
                 sync_symbol(mexc, sym, "1h", cfg["mexc"]["backfill_days_1h"])
-            sync_tickers(mexc, set(symbols))
+            sync_tickers(tickers, set(symbols))
             backfill_regime(cfg)
             if time.time() - last_regime > cfg["regime"]["refresh_seconds"]:
                 refresh_regime(cfg)
                 last_regime = time.time()
-            db.kv_set("collector_heartbeat", {"ts": time.time(), "symbols": len(symbols)})
+            db.kv_set("collector_heartbeat",
+                      {"ts": time.time(), "symbols": len(symbols),
+                       "trading_groups": len(group_symbols)})
         except Exception as e:  # noqa: BLE001
             log.exception("collector cycle failed")
             try:

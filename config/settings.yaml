@@ -3,8 +3,11 @@
 
 mexc:
   base_url: https://contract.mexc.com
-  # polite client-side throttle, MEXC contract API allows much more
-  max_requests_per_sec: 5
+  # MEXC allows ~10 req/s on non-order endpoints; stay under that even at a
+  # wide (~900-symbol) collected universe. Steady-state collection needs one
+  # small request per symbol per timeframe per cycle (after initial backfill),
+  # so cycle time scales with collected symbol count, not with candle depth.
+  max_requests_per_sec: 8
   backfill_days: 30        # 1m candles per symbol on first run
   backfill_days_1h: 180    # 1h candles (regime detection needs EMA200 on 1h)
 

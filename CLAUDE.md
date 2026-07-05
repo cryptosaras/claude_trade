@@ -57,14 +57,29 @@ in sync when you make a permanent decision.
 
 ## Coin groups — strategies do NOT fit all coins
 
-`config/universe.yaml` defines groups: majors, large_alts, mid_alts, memes.
-BTC moves on macro flows; memecoins move on attention and liquidation cascades.
-A strategy declares `meta.groups` and is only evaluated on those coins.
-Judge performance **per group** (`/api/strategies` → `stats_by_group`): a
-strategy profitable on memes but flat on mid_alts should have mid_alts removed
-from its groups. You manage the universe file too: add/remove/regroup coins with
-evidence, respecting the rules at the bottom of that file (max 40 symbols,
-≥$20M daily turnover, BTC stays).
+`config/universe.yaml` has two layers. **Collection** is wide open: the
+collector auto-discovers every MEXC USDT contract with 24h turnover ≥
+`collect.min_turnover_usd` (default $5M, ~60+ symbols today, up to
+`collect.max_symbols` — currently 900, i.e. essentially the whole exchange).
+No manual list — new listings and pumping coins appear by themselves. Tune
+`collect.*` freely with a stated reason; it only costs storage and collector
+API calls, not trading risk.
+
+**Trading groups** (majors, large_alts, mid_alts, memes, or new ones you
+create) are the symbols strategies actually trade. BTC moves on macro flows;
+memecoins move on attention and liquidation cascades — a strategy declares
+`meta.groups` and is only evaluated on those coins. Judge performance **per
+group** (`/api/strategies` → `stats_by_group`): a strategy profitable on memes
+but flat on mid_alts should have mid_alts removed from its groups.
+
+Trading groups have a real constraint the collection layer doesn't: the engine
+loads full candle history for every group symbol on every tick. Keep the
+combined group total to roughly ≤60 symbols on the current VPS size. Use
+`/api/universe` → `candidates` (collected symbols not yet in any group, ranked
+by turnover) to find promotion candidates — rotate group membership based on
+evidence (a candidate showing a tradeable pattern in backtests earns a slot;
+a stale group member with no edge loses one). BTC_USDT stays in majors — it is
+the regime anchor.
 
 ## Validation gate — no strategy goes active without passing
 

@@ -11,20 +11,20 @@ Textbook signals (RSI oversold, Bollinger touches, EMA crosses) are farmed by
 thousands of bots and carry no edge after fees. The seed strategies here are
 baselines to beat, not templates to copy. Hunt where crowds aren't:
 
-- **Microstructure**: funding-rate flips and extremes; funding vs price
+- Microstructure: funding-rate flips and extremes; funding vs price
   divergence; open-interest surges; liquidation cascades and the bounce after
   the flush; stop-hunt wicks (sweep of an obvious high/low, instant reclaim).
-- **Time anomalies**: weekend illiquidity drift; Asia/EU/US session opens;
+- Time anomalies: weekend illiquidity drift; Asia/EU/US session opens;
   behavior in the hour around funding settlements (00/08/16 UTC); day-of-week
   effects in memecoins.
-- **Cross-asset structure**: BTC leads alts by minutes — measure the lag on
+- Cross-asset structure: BTC leads alts by minutes — measure the lag on
   1m data and trade the followers; meme-basket dispersion (fade the outlier vs
   the basket); laggard catch-up (the last correlated coin to move); alt beta
   expansion in fresh trends.
-- **Extremes and crowd pain**: fade parabolic meme pumps (3σ+ moves) on the
+- Extremes and crowd pain: fade parabolic meme pumps (3σ+ moves) on the
   first lower high; post-liquidation-flush reversals; round-number magnet and
   break behavior; volatility squeeze → expansion timing.
-- **Meta**: regime-flip momentum (the first hours of a fresh BEAR are the most
+- Meta: regime-flip momentum (the first hours of a fresh BEAR are the most
   tradeable shorts); dynamic allocation — clone a working strategy onto the
   hottest group and cut it from the coldest.
 
@@ -88,8 +88,5 @@ Never edit locked strategies. Never lower fee/slippage/funding settings —
 edges that only exist at fake costs are not edges. Never place real orders.
 Max 2 edits + 2 creations per run. If a strategy was tuned in the previous
 2 reports, leave it alone this run. Keep <= 8 trading strategies: to make room,
-retire the weakest non-locked one and say why. Universe: collection is wide
-open (config/universe.yaml collect.*, currently $5M turnover / 900-symbol cap
-— tune freely with reason); trading GROUPS are capacity-bound to ~60 symbols
-combined — rotate membership using /api/universe candidates, evidence-based,
-BTC_USDT always stays in majors.
+retire the weakest non-locked one and say why. Universe rules per
+config/universe.yaml (max 900 symbols, >=$5M turnover, BTC stays).

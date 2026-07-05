@@ -157,11 +157,17 @@ def events(limit: int = 60):
 
 @app.get("/api/universe", dependencies=[Depends(auth)])
 def universe():
+    """groups/tickers: the actively-traded universe (what the dashboard charts).
+    candidates: collected-but-not-traded symbols, ranked by turnover — the pool
+    the AI rotates new group members in from (see CLAUDE.md)."""
     uni = load_universe()
     tickers = db.qd("SELECT * FROM tickers ORDER BY turnover24h DESC NULLS LAST")
     known = set(uni["symbols"])
     return {"groups": uni["groups"],
-            "tickers": [t for t in tickers if t["symbol"] in known]}
+            "collect": uni["collect"],
+            "tickers": [t for t in tickers if t["symbol"] in known],
+            "candidates": [t for t in tickers if t["symbol"] not in known][:80],
+            "collected_count": len(tickers)}
 
 
 def goal_progress():

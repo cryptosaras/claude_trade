@@ -1,13 +1,17 @@
-# Coin universe, organized into behavior groups.
-# THE AI MANAGES THIS FILE: it may add/remove symbols and regroup them based on
-# evidence (liquidity, volatility profile, correlation). Collector re-reads it
-# every cycle; new symbols are backfilled automatically, removed symbols stop
-# collecting (history is kept).
+# Universe config. THE AI MANAGES THIS FILE.
 #
-# Groups matter because strategies declare which groups they trade.
-# BTC does not move like a 20M-mcap memecoin — never assume one strategy fits all.
-#
-# vol_profile is a human/AI hint, not used by code: low/med/high/extreme.
+# Two layers:
+# 1) COLLECTION (automatic): the collector discovers every live USDT contract
+#    with 24h turnover >= min_turnover_usd and records its candles continuously.
+#    No manual list — new listings and pumping coins appear by themselves,
+#    dead ones drop out. Group symbols are always collected regardless.
+# 2) TRADING GROUPS (below): the symbols strategies actively trade, organized
+#    by behavior. The engine evaluates every group symbol each tick, so this
+#    layer has an ENGINE capacity limit, not a market-access limit.
+
+collect:
+  min_turnover_usd: 5000000   # ~60 symbols qualify today; lower it (with reason) to widen research
+  max_symbols: 900            # hard cap = essentially "everything liquid on MEXC"
 
 groups:
   majors:
@@ -15,8 +19,6 @@ groups:
     symbols: [BTC_USDT, ETH_USDT]
   large_alts:
     vol_profile: med
-    # TON_USDT removed 2026-07-05: zombie contract on MEXC (lastPrice 0, no volume).
-    # HYPE added instead (230M/24h turnover). LTC considered but only 8M.
     symbols: [SOL_USDT, BNB_USDT, XRP_USDT, ADA_USDT, AVAX_USDT, LINK_USDT, HYPE_USDT, TRX_USDT]
   mid_alts:
     vol_profile: high
@@ -25,7 +27,11 @@ groups:
     vol_profile: extreme
     symbols: [DOGE_USDT, SHIB_USDT, PEPE_USDT, WIF_USDT, BONK_USDT, FLOKI_USDT]
 
-# Rules the AI should respect when editing the universe:
-# - max 40 symbols total (VPS resource cap)
-# - only contracts with 24h turnover >= $20M (check /api/universe candidates)
-# - BTC_USDT must always stay (regime anchor)
+# Rules for the AI when editing this file:
+# - collect.*: tune freely with a stated reason (storage grows ~10MB/symbol/month).
+# - trading groups: keep the TOTAL across all groups <= ~60 symbols — the engine
+#   loads 3500 x 1m candles per symbol every tick on a 2-vCPU box. Rotate members
+#   in/out based on evidence; /api/universe "candidates" lists collected symbols
+#   (by turnover) that are not yet in any group. You may also create new groups
+#   (e.g. new_listings, ai_tokens) — strategies reference groups by name.
+# - BTC_USDT stays in majors: it is the regime anchor.
