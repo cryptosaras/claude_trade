@@ -14,7 +14,7 @@ paper:
   slippage: 0.0003         # 0.03% applied on entry and exit
   risk_per_trade: 0.01     # fraction of equity risked between entry and SL
   max_leverage: 3.0
-  max_open_positions: 6
+  max_open_positions: 8   # enough slots for several incubating experiments to gather samples
   max_positions_per_group: 2   # crude correlation cap
   max_positions_per_strategy: 3
   daily_stop_pct: -5.0     # halt new entries for the day below this equity change
