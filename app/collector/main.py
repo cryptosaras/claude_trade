@@ -75,6 +75,41 @@ def sync_tickers(mexc: Mexc, symbols: set[str]) -> None:
         )
 
 
+def backfill_regime(cfg: dict) -> None:
+    """One-time: compute historical hourly regimes from stored BTC 1h candles
+    so backtests can split results by the regime that actually prevailed."""
+    if db.kv_get("regime_backfilled"):
+        return
+    rows = db.qd("SELECT ts, o, h, l, c, v FROM candles "
+                 "WHERE symbol='BTC_USDT' AND tf='1h' ORDER BY ts")
+    rc = cfg["regime"]
+    if len(rows) < rc["ema_slow"] + 40:
+        return
+    from ..common import indicators as ind
+    df = pd.DataFrame(rows).set_index("ts")
+    c = df["c"]
+    ef, es = ind.ema(c, rc["ema_fast"]), ind.ema(c, rc["ema_slow"])
+    a = ind.adx(df, rc["adx_period"])
+    slope = es.pct_change(24)
+    with db.pool().connection() as conn, conn.cursor() as cur:
+        for i in range(rc["ema_slow"] + 24, len(df)):
+            trending = a.iloc[i] >= rc["adx_trend_min"]
+            if trending and c.iloc[i] > es.iloc[i] and ef.iloc[i] > es.iloc[i] \
+                    and slope.iloc[i] > 0.001:
+                label = "BULL"
+            elif trending and c.iloc[i] < es.iloc[i] and ef.iloc[i] < es.iloc[i] \
+                    and slope.iloc[i] < -0.001:
+                label = "BEAR"
+            else:
+                label = "SIDE"
+            cur.execute(
+                "INSERT INTO regime (ts, label, confidence, meta) VALUES (%s, %s, 0.5, "
+                "'{\"backfilled\": true}') ON CONFLICT (ts) DO NOTHING",
+                (df.index[i], label))
+    db.kv_set("regime_backfilled", {"rows": len(df)})
+    db.event("system", f"regime history backfilled ({len(df)} hours)")
+
+
 def refresh_regime(cfg: dict) -> None:
     rows = db.qd(
         "SELECT ts, o, h, l, c, v FROM candles WHERE symbol='BTC_USDT' AND tf='1h' "
@@ -114,6 +149,7 @@ def run() -> None:
             for sym in symbols:
                 sync_symbol(mexc, sym, "1h", cfg["mexc"]["backfill_days_1h"])
             sync_tickers(mexc, set(symbols))
+            backfill_regime(cfg)
             if time.time() - last_regime > cfg["regime"]["refresh_seconds"]:
                 refresh_regime(cfg)
                 last_regime = time.time()
