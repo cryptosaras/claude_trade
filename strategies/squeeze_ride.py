@@ -27,8 +27,8 @@ from app.common import indicators as ind  # noqa: E402
 class SqueezeRide(Strategy):
     meta = {
         "name": "squeeze_ride",
-        "version": 1,
-        "description": "Funding <= -0.03% with price above EMA200(1h) -> long the short squeeze",
+        "version": 2,
+        "description": "Fresh flip to funding <= -0.03% with price above EMA200(1h) -> long the short squeeze",
         "groups": ["mid_alts", "memes"],
         # BEAR negative in the event study at every threshold — excluded
         "regimes": ["BULL", "SIDE"],
@@ -42,20 +42,26 @@ class SqueezeRide(Strategy):
             "max_sl_pct": 0.05,
             "min_sl_pct": 0.01,
             "tp_pct": 0.10,              # fat right tail is the payoff; don't cap it early
-            "cooldown_min": 480,         # one entry per episode (matches study debounce)
         },
     }
 
+    # v1 -> v2: enter only on an OBSERVED flip from non-extreme to extreme.
+    # v1's 8h cooldown re-entered stale multi-day episodes the event study had
+    # counted once (8 of 11 dev trades were the same RPL episode, PF 0.41);
+    # the study measured the FIRST hours of an episode, so trade only those.
+    # In-memory state: after a reload every symbol starts unknown -> no entry
+    # until a fresh flip is witnessed. Conservative by construction.
+
     def __init__(self):
-        self._last_entry = {}  # symbol -> entry ts (in-memory; resets on reload, cheap)
+        self._was_extreme = {}  # symbol -> bool, last observed funding state
 
     def should_enter(self, ctx):
         p = self.meta["params"]
-        if ctx.funding > p["funding_extreme"]:
-            return None
-        last = self._last_entry.get(ctx.symbol)
-        if last is not None and (ctx.now - last).total_seconds() < p["cooldown_min"] * 60:
-            return None
+        extreme = ctx.funding <= p["funding_extreme"]
+        prev = self._was_extreme.get(ctx.symbol)
+        self._was_extreme[ctx.symbol] = extreme
+        if not extreme or prev is not False:
+            return None  # not extreme, still mid-episode, or state unknown
         df = ctx.tf("1h")
         if len(df) < p["ema_period"] + 5:
             return None
@@ -70,7 +76,6 @@ class SqueezeRide(Strategy):
         dist = (px - sl) / px
         if not (p["min_sl_pct"] <= dist <= p["max_sl_pct"]):
             return None
-        self._last_entry[ctx.symbol] = ctx.now
         return Signal("long", sl=sl, tp=px * (1 + p["tp_pct"]),
                       reason=f"squeeze: funding {ctx.funding:.4%}, above 1h EMA200")
 
