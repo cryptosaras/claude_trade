@@ -19,12 +19,14 @@ from app.common import indicators as ind  # noqa: E402
 class SweepReclaim(Strategy):
     meta = {
         "name": "sweep_reclaim",
-        "version": 2,
+        "version": 3,
         "description": "5m wick sweeps an 11h extreme and closes back inside on volume -> fade it",
         "groups": ["mid_alts", "memes"],
         # trend regimes only: longs off swept lows in BULL, shorts in BEAR
         "regimes": ["BULL", "BEAR"],
-        "status": "paused",  # becomes incubating only after passing the backtest gate
+        # passed the gate 2026-07-05: held-out symbols 21d PF 1.61 (n=37);
+        # weak spot: last-7d slice PF 0.46 — incubation decides (kill < 1.15)
+        "status": "incubating",
         "params": {
             "lookback_bars": 132,   # 11h of 5m bars define the reference extreme
             "gap_bars": 3,          # extreme must predate the sweep by this many bars
