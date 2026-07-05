@@ -8,6 +8,7 @@ import time
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.staticfiles import StaticFiles
 from psycopg.types.json import Json
 from pydantic import BaseModel
 
@@ -259,3 +260,7 @@ def backtests(limit: int = 20):
 def _json_dumps(obj):
     import json
     return json.dumps(obj, default=str)
+
+
+# static assets (chart library); data still lives behind /api/* auth
+app.mount("/static", StaticFiles(directory=ROOT / "ui"), name="static")

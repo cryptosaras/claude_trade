@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(ssh -i ~/.ssh/hetzner_openrouter *)",
+      "Bash(scp -i ~/.ssh/hetzner_openrouter *)",
+      "Bash(curl *)",
+      "Bash(python *)",
+      "Bash(python -m py_compile *)"
+    ]
+  }
+}
