@@ -43,6 +43,32 @@ def regime_at(series, ts, default="SIDE") -> str:
     return label
 
 
+def funding_series(symbols: list[str],
+                   start: dt.datetime) -> dict[str, list[tuple[dt.datetime, float]]]:
+    """symbol -> ascending (ts, rate) from the hourly funding snapshots the
+    collector stores — the rates that actually prevailed, not today's."""
+    rows = db.q("SELECT symbol, ts, rate FROM funding WHERE symbol = ANY(%s) "
+                "AND ts >= %s AND rate IS NOT NULL ORDER BY ts", (symbols, start))
+    out: dict[str, list[tuple[dt.datetime, float]]] = {}
+    for sym, ts, rate in rows:
+        out.setdefault(sym, []).append((ts, float(rate)))
+    return out
+
+
+def funding_at(series: dict, idx: dict, ts: dt.datetime) -> dict[str, float]:
+    """Newest stored rate at or before ts, per symbol. `idx` carries the moving
+    pointers between calls; ts must be non-decreasing across calls."""
+    rates = {}
+    for sym, rows in series.items():
+        i = idx.get(sym, -1)
+        while i + 1 < len(rows) and rows[i + 1][0] <= ts:
+            i += 1
+        idx[sym] = i
+        if i >= 0:
+            rates[sym] = rows[i][1]
+    return rates
+
+
 def run_backtest(strategy_name: str, days: int, step_minutes: int = 5,
                  symbols: list[str] | None = None) -> dict:
     cfg = load_settings()
@@ -60,8 +86,12 @@ def run_backtest(strategy_name: str, days: int, step_minutes: int = 5,
     if not history:
         return {"error": "no candle history in DB for the requested window"}
     regimes = regime_series(start - dt.timedelta(days=2))
-    funding = {r[0]: float(r[1] or 0) for r in
-               db.q("SELECT symbol, funding_rate FROM tickers")}
+    # historical funding, as-of each step; the current ticker snapshot only
+    # fills gaps (symbols/periods from before funding collection began)
+    funding_hist = funding_series(syms, start - dt.timedelta(days=2))
+    funding_snap = {r[0]: float(r[1] or 0) for r in
+                    db.q("SELECT symbol, funding_rate FROM tickers")}
+    funding_idx: dict[str, int] = {}
 
     broker = Broker(cfg, mode="mem")
     lookback = cfg["engine"]["candle_lookback"]
@@ -83,6 +113,7 @@ def run_backtest(strategy_name: str, days: int, step_minutes: int = 5,
             if pos >= 10:
                 window_1h[sym] = df.iloc[max(0, pos - 500):pos]
         if window:
+            funding = {**funding_snap, **funding_at(funding_hist, funding_idx, t)}
             applied = core.step(
                 strategies=strategies, broker=broker, candles=window,
                 candles_1h=window_1h, groups=uni["symbol_group"],

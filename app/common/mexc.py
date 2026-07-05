@@ -41,6 +41,14 @@ class Mexc:
     def funding_rate(self, symbol: str) -> dict:
         return self._get(f"/api/v1/contract/funding_rate/{symbol}")["data"]
 
+    def funding_history(self, symbol: str, page_size: int = 100) -> list[dict]:
+        """Most recent funding settlements, newest first (~3/day per symbol);
+        page_size=100 covers ~33 days."""
+        data = self._get("/api/v1/contract/funding_rate/history",
+                         {"symbol": symbol, "page_num": 1,
+                          "page_size": page_size})["data"]
+        return data.get("resultList") or []
+
     def klines(self, symbol: str, interval: str, start: int, end: int) -> list[tuple]:
         """interval: Min1|Min5|Min15|Min60|Hour4|Day1. start/end unix seconds.
         Returns [(ts_sec, o, h, l, c, vol), ...] ascending."""

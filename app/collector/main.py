@@ -103,6 +103,32 @@ def sync_tickers(tickers: list[dict], symbols: set[str]) -> None:
         )
 
 
+def backfill_funding(mexc: Mexc, symbols: list[str], days: int) -> None:
+    """One-time per symbol: pull real historical funding settlements so
+    backtests charge the rates that actually prevailed, not today's snapshot."""
+    done = set(db.kv_get("funding_backfilled_symbols") or [])
+    todo = [s for s in symbols if s not in done]
+    if not todo:
+        return
+    cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=days)
+    for sym in todo:
+        try:
+            rows = mexc.funding_history(sym)
+        except Exception as e:  # noqa: BLE001
+            log.warning("funding history failed for %s: %s", sym, e)
+            continue  # not marked done — retried next cycle
+        for r in rows:  # newest first
+            ts = dt.datetime.fromtimestamp(r["settleTime"] / 1000, dt.timezone.utc)
+            if ts < cutoff:
+                break
+            db.execute("INSERT INTO funding (symbol, ts, rate) VALUES (%s, %s, %s) "
+                       "ON CONFLICT (symbol, ts) DO NOTHING",
+                       (sym, ts, r.get("fundingRate")))
+        done.add(sym)
+    db.kv_set("funding_backfilled_symbols", sorted(done))
+    db.event("system", f"funding history backfilled for {len(todo)} symbols")
+
+
 def backfill_regime(cfg: dict) -> None:
     """One-time: compute historical hourly regimes from stored BTC 1h candles
     so backtests can split results by the regime that actually prevailed."""
@@ -184,6 +210,7 @@ def run() -> None:
             for sym in symbols:
                 sync_symbol(mexc, sym, "1h", cfg["mexc"]["backfill_days_1h"])
             sync_tickers(tickers, set(symbols))
+            backfill_funding(mexc, symbols, cfg["mexc"]["backfill_days"])
             backfill_regime(cfg)
             if time.time() - last_regime > cfg["regime"]["refresh_seconds"]:
                 refresh_regime(cfg)
