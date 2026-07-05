@@ -14,7 +14,19 @@ Below EMA200 the same funding LOSES (-6.0%/8h at extreme thr) — the trend
 filter is the signal, not decoration. BEAR was negative at every threshold
 (n=18/27/56) -> BULL/SIDE only. Fat right tail carries the mean: wide stop,
 far TP, hold toward the 12h time-stop. Longs also RECEIVE the negative
-funding while held. Edge is concentrated in small caps -> mid_alts+memes."""
+funding while held. Edge is concentrated in small caps -> mid_alts+memes.
+
+RETIRED AT THE GATE 2026-07-06, never traded live. v1 (8h cooldown) dev 21d
+PF 0.41 (n=11): 8 of 11 trades were stale re-entries into one multi-day
+RPL_USDT episode — the study counted an episode once, the cooldown re-traded
+it for days and those entries were the losers. v2 (entry only on an observed
+non-extreme -> extreme funding flip, the study's own episode definition) was
+clean — 2/2 winners, +86 net — but exposed the real frequency: 2 fresh flips
+in 21 days across tradable mid_alts+memes in BULL/SIDE. ~0.1 trades/day can
+neither reach n=20 certification in reasonable time nor contribute to a
+2%/day goal. Mechanism positive, expressible frequency insufficient.
+Revisit only if the tradable universe or data widens the event stream
+(e.g. OI-spike + funding-flip combo once open_interest history matures)."""
 import sys
 from pathlib import Path
 
@@ -27,12 +39,12 @@ from app.common import indicators as ind  # noqa: E402
 class SqueezeRide(Strategy):
     meta = {
         "name": "squeeze_ride",
-        "version": 2,
+        "version": 3,
         "description": "Fresh flip to funding <= -0.03% with price above EMA200(1h) -> long the short squeeze",
         "groups": ["mid_alts", "memes"],
         # BEAR negative in the event study at every threshold — excluded
         "regimes": ["BULL", "SIDE"],
-        "status": "paused",  # awaiting backtest gate — flip to incubating only on a pass
+        "status": "retired",  # killed at the gate: too rare to certify, see docstring
         "params": {
             "funding_extreme": -0.0003,  # entry: rate at or below this
             "funding_done": -0.00005,    # exit: crowd no longer paying to short
