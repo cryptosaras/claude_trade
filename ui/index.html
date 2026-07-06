@@ -454,7 +454,9 @@ async function loadStrategies(){
       <td class="num ${g.net>=0?'up':'down'}">${g.net>=0?'+':''}${fmt(g.net)}</td>
       <td class="num">${g.pf??'—'}</td></tr>`).join('')||'<tr><td colspan="5" class="dim">no trades yet</td></tr>';
     const sel=$('#bt-strategy');
+    const cur=sel.value;  // rebuilding innerHTML resets to 'all' — keep the user's pick
     sel.innerHTML='<option value="all">all</option>'+d.strategies.map(s=>`<option>${s.name}</option>`).join('');
+    if([...sel.options].some(o=>o.value===cur))sel.value=cur;
   }catch(e){console.error(e)}
 }
 async function setStatus(name,status){
@@ -502,17 +504,23 @@ async function showBt(id){
   const b=await api('/api/backtest/'+id);
   $('#bt-result').textContent=JSON.stringify(b.result||b,null,2);
 }
+let btPoll=null;  // single handle: repeat clicks must not stack pollers
 $('#bt-run').onclick=async()=>{
   $('#bt-status').textContent='starting…';
   const body={strategy:$('#bt-strategy').value,days:+$('#bt-days').value,step_minutes:+$('#bt-step').value};
-  const{id}=await api('/api/backtest',{method:'POST',
-    headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  let id;
+  try{({id}=await api('/api/backtest',{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}));}
+  catch(e){$('#bt-status').textContent='not started: '+e.message;return}
   $('#bt-status').textContent=`#${id} running…`;
-  const poll=setInterval(async()=>{
-    const b=await api('/api/backtest/'+id);
-    if(b.status!=='running'){clearInterval(poll);
-      $('#bt-status').textContent=`#${id} ${b.status}`;
-      $('#bt-result').textContent=JSON.stringify(b.result,null,2);loadBacktests();}
+  clearInterval(btPoll);
+  btPoll=setInterval(async()=>{
+    try{
+      const b=await api('/api/backtest/'+id);
+      if(b.status!=='running'){clearInterval(btPoll);
+        $('#bt-status').textContent=`#${id} ${b.status}`;
+        $('#bt-result').textContent=JSON.stringify(b.result,null,2);loadBacktests();}
+    }catch(e){/* transient (restart/reload mid-run): keep polling, orphan cleanup will resolve it */}
   },3000);
 };
 

@@ -71,14 +71,19 @@ def funding_at(series: dict, idx: dict, ts: dt.datetime) -> dict[str, float]:
 
 def run_backtest(strategy_name: str, days: int, step_minutes: int = 5,
                  symbols: list[str] | None = None) -> dict:
+    if step_minutes < 1:
+        return {"error": "step_minutes must be >= 1"}
     cfg = load_settings()
     uni = load_universe()
     strategies = [s for s in load_strategies(sync_db=False)
                   if strategy_name in ("all", s.meta["name"])]
     if not strategies:
         return {"error": f"strategy '{strategy_name}' not found"}
-    for s in strategies:
-        s.runtime_status = "active"  # backtest ignores pause/retire status
+    if strategy_name != "all":
+        # explicit request overrides pause/retire; 'all' keeps file statuses so
+        # retired strategies don't steal position slots from the live portfolio
+        for s in strategies:
+            s.runtime_status = "active"
     syms = symbols or uni["symbols"]
     start = dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=days)
     # full-universe history: --symbols restricts what may be TRADED, not what a

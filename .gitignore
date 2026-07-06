@@ -5,4 +5,6 @@ __pycache__/
 vps.txt
 *.local.*
 ops/*.log
+ops/.applied_sha
+ops/.autopull.lock
 delete/

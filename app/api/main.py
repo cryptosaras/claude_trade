@@ -1,7 +1,10 @@
 """Dashboard + control API. HTTP Basic auth (user: trader / DASH_PASSWORD env)."""
 import datetime as dt
+import json
 import os
 import secrets
+import subprocess
+import sys
 import threading
 import time
 
@@ -10,9 +13,8 @@ from fastapi.responses import FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from psycopg.types.json import Json
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from ..backtest.main import run_backtest
 from ..common import db
 from ..common.config import ROOT, load_settings, load_universe
 
@@ -35,6 +37,11 @@ def auth(cred: HTTPBasicCredentials = Depends(security)) -> str:
 def startup() -> None:
     db.wait_for_db()
     db.init_schema()
+    # backtests run inside this container; any row still 'running' at boot
+    # belonged to a process that died with the previous container
+    db.execute(
+        "UPDATE backtests SET status='failed', result=%s WHERE status='running'",
+        (Json({"error": "orphaned: api restarted while this backtest was running"}),))
 
 
 @app.get("/")
@@ -226,22 +233,43 @@ def set_status(name: str, body: StatusBody):
 
 class BacktestBody(BaseModel):
     strategy: str
-    days: int = 21
-    step_minutes: int = 5
+    # bounded: step_minutes=0 loops run_backtest forever; huge windows OOM the box
+    days: int = Field(21, ge=1, le=60)
+    step_minutes: int = Field(5, ge=1, le=60)
 
 
 @app.post("/api/backtest", dependencies=[Depends(auth)])
 def backtest(body: BacktestBody):
+    running = db.q("SELECT id FROM backtests WHERE status='running'")
+    if running:
+        raise HTTPException(
+            409, f"backtest #{running[0][0]} is still running — one at a time "
+                 "(2-core box shared with the live engine)")
     rows = db.q(
         "INSERT INTO backtests (params) VALUES (%s) RETURNING id",
         (Json(body.model_dump()),))
     bt_id = rows[0][0]
 
     def work():
+        # nice'd subprocess, not an in-process thread: a CPU-bound backtest in
+        # this process starves the API via the GIL, and nice keeps it below the
+        # live engine/collector in scheduler priority
         try:
-            result = run_backtest(body.strategy, body.days, body.step_minutes)
-            db.execute("UPDATE backtests SET status='done', result=%s WHERE id=%s",
-                       (Json(result, dumps=_json_dumps), bt_id))
+            proc = subprocess.run(
+                ["nice", "-n", "10", sys.executable, "-m", "app.backtest.main",
+                 "--strategy", body.strategy, "--days", str(body.days),
+                 "--step-minutes", str(body.step_minutes)],
+                capture_output=True, text=True, timeout=6 * 3600)
+            out = proc.stdout or ""
+            if proc.returncode != 0:
+                raise RuntimeError((proc.stderr or out or "no output")[-1500:])
+            if "{" not in out:
+                raise RuntimeError(f"no JSON in backtest output: {out[-500:]}")
+            result = json.loads(out[out.index("{"):])
+            # run_backtest signals some failures by returning {"error": ...}
+            status = "failed" if result.get("error") else "done"
+            db.execute("UPDATE backtests SET status=%s, result=%s WHERE id=%s",
+                       (status, Json(result, dumps=_json_dumps), bt_id))
         except Exception as e:  # noqa: BLE001
             db.execute("UPDATE backtests SET status='failed', result=%s WHERE id=%s",
                        (Json({"error": str(e)}), bt_id))

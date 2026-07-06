@@ -202,13 +202,18 @@ def run() -> None:
             # to qualify (config/universe.yaml: collect.*) — auto-discovered,
             # no manual list. Trading only ever happens on group_symbols.
             symbols = discover_symbols(tickers, group_symbols, uni["collect"])
+            cycle_t0 = time.time()
             for sym in symbols:
                 n = sync_symbol(mexc, sym, "1m", cfg["mexc"]["backfill_days"])
                 if n > 500:
                     log.info("backfilled %s 1m: %d candles", sym, n)
-            # 1h only needed for BTC (regime) but cheap to keep for all
+            # 1h is only consumed for traded (group) symbols + BTC regime;
+            # syncing it for all collected symbols doubles the request budget
+            # and cycle time scales with the collected count (up to 900).
+            # Promotion to a group backfills 180d of 1h in ~3 requests.
             for sym in symbols:
-                sync_symbol(mexc, sym, "1h", cfg["mexc"]["backfill_days_1h"])
+                if sym in group_symbols or sym == "BTC_USDT":
+                    sync_symbol(mexc, sym, "1h", cfg["mexc"]["backfill_days_1h"])
             sync_tickers(tickers, set(symbols))
             backfill_funding(mexc, symbols, cfg["mexc"]["backfill_days"])
             backfill_regime(cfg)
@@ -217,7 +222,8 @@ def run() -> None:
                 last_regime = time.time()
             db.kv_set("collector_heartbeat",
                       {"ts": time.time(), "symbols": len(symbols),
-                       "trading_groups": len(group_symbols)})
+                       "trading_groups": len(group_symbols),
+                       "cycle_seconds": round(time.time() - cycle_t0, 1)})
         except Exception as e:  # noqa: BLE001
             log.exception("collector cycle failed")
             try:

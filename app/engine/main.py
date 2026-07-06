@@ -15,15 +15,46 @@ from .loader import load_strategies
 log = logging.getLogger("engine")
 
 
+# Incremental candle cache. History only ever changes at the tail: the
+# collector syncs forward from its last stored bar (inclusive), which is
+# exactly the bar the engine cached last — so refetching a small overlap
+# window past the cached tip sees every rewrite. Full-window queries for
+# ~60 symbols every 20s tick moved ~57GB/13h between db and engine.
+_cache: dict[tuple[str, str], pd.DataFrame] = {}
+_cache_born = 0.0
+CACHE_MAX_AGE = 1800  # full reload every 30 min: heals drift, applies config changes
+_OVERLAP = {"1m": dt.timedelta(minutes=5), "1h": dt.timedelta(hours=2)}
+
+
 def load_candles(symbols: list[str], lookback: int,
                  tf: str = "1m") -> dict[str, pd.DataFrame]:
+    global _cache_born
+    if time.time() - _cache_born > CACHE_MAX_AGE:
+        _cache.clear()
+        _cache_born = time.time()
     out = {}
     for sym in symbols:
-        rows = db.qd(
-            "SELECT ts, o, h, l, c, v FROM candles WHERE symbol=%s AND tf=%s "
-            "ORDER BY ts DESC LIMIT %s", (sym, tf, lookback))
-        if rows:
-            out[sym] = pd.DataFrame(rows[::-1]).set_index("ts")
+        cached = _cache.get((sym, tf))
+        if cached is None:
+            rows = db.qd(
+                "SELECT ts, o, h, l, c, v FROM candles WHERE symbol=%s AND tf=%s "
+                "ORDER BY ts DESC LIMIT %s", (sym, tf, lookback))
+            if not rows:
+                continue
+            df = pd.DataFrame(rows[::-1]).set_index("ts")
+        else:
+            since = (cached.index[-1] - _OVERLAP[tf]).to_pydatetime()
+            rows = db.qd(
+                "SELECT ts, o, h, l, c, v FROM candles WHERE symbol=%s AND tf=%s "
+                "AND ts > %s ORDER BY ts", (sym, tf, since))
+            if rows:
+                fresh = pd.DataFrame(rows).set_index("ts")
+                df = pd.concat(
+                    [cached[cached.index < fresh.index[0]], fresh]).iloc[-lookback:]
+            else:
+                df = cached
+        _cache[(sym, tf)] = df
+        out[sym] = df
     return out
 
 
