@@ -14,11 +14,14 @@ n=249) STABLE across both time-halves (h1 1.32 / h2 1.46); large_alts (0.87) and
 memes (h1 0.53 / h2 1.38, unstable) dropped; BULL 0.85 dropped, BEAR 1.24 +
 SIDE 1.17 kept.
 
-Real-engine backtest (full mechanics: funding, 2-pos/group cap, 12h stop) passed
-the gate: 30d PF 1.31 (n=144, win 54%, +0.89%/day), BEAR 1.34 + SIDE 1.28 both
-clear, halves h1 1.15 / h2 1.40, 14d 1.36. Weak spot: last-7d slice PF 1.02
-(n=34, noisy recent week) — incubation decides (kill < 1.15). See report
-2026-07-06."""
+Real-engine IN-SAMPLE backtest (full mechanics: funding, 2-pos/group cap, 12h
+stop) is strong: 30d PF 1.31 (n=144, win 54%), BEAR 1.34 + SIDE 1.28. But this
+is NOT a clean held-out — filter/group/regimes were all chosen by maximizing
+over the same 30d, so 1.31 is selection-inflated; the one genuine forward slice
+(last 7d) is only PF 1.02 and h1 only 1.15. True edge is likely ~1.1-1.2. On 30d
+of 1m data a clean tune-old/test-new split isn't buildable, so live-forward
+incubation IS the real OOS test. Judge ~Jul 11 on FORWARD live PF at >=20 trades
+ONLY (do not anchor on 1.31); kill on forward PF < 1.15. See report 2026-07-06."""
 import datetime as dt
 import sys
 from pathlib import Path
