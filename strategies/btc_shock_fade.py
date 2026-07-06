@@ -12,7 +12,20 @@ Edge concentrates in BEAR down-flushes (10/14 events positive at 4h); the
 BULL-side fade was 1-for-3 -> BEAR only, long only. Fat left tail when the
 flush continues (-2.4..-5.9%) -> SL below the flush low is mandatory.
 The BTC 1m shock is the precise trigger flush_reversal lacked (its lesson:
-generic magnitude fires on noise; a specific reference event is the edge)."""
+generic magnitude fires on noise; a specific reference event is the edge).
+
+RETIRED 2026-07-06 — killed at the backtest gate, never traded live.
+Gate: 8-variant param scan on dev 21d; tight v1 SL (0.4 ATR, min 0.6%) PF 0.87
+(n=37) — stopped out before the 2-4h bounce, fees > gross. Wide-SL family
+(1.0 ATR, min 1%) was robust across TPs on dev: PF 1.37/1.98/1.22 at
+tp_r 1.0/1.5/2.2, no-TP 4h-hold 3.05 (fragile: 5h sibling 1.56). Chose
+tp_r 1.5 (dev PF 1.98, n=36, win 64%). HELD-OUT (days 30..21 ago, excluded
+from the scan): PF 0.93, n=19, win 37% — < 1.1 gate, reject. Same
+dev-inflation pattern as dispersion_fade. The per-event medians are real but
+~0.16% fees + SL/TP mechanics eat the ~1% median bounce; win rate collapsed
+out of the tuning window. Do not revive without a sharper entry filter proven
+on NEW data (candidate: gate on concurrent OI drop — the queued
+OI-confirmed-flush item, ~Jul 19)."""
 import datetime as dt
 import sys
 from pathlib import Path
@@ -30,15 +43,15 @@ class BtcShockFade(Strategy):
         "description": "BTC 1m flush >=0.35% in BEAR -> long alts' overshoot bounce (2-5h)",
         "groups": ["large_alts", "mid_alts", "memes"],
         "regimes": ["BEAR"],
-        "status": "paused",  # pre-gate: flip to incubating only if dev+held-out backtests pass
+        "status": "retired",  # failed the held-out gate (PF 0.93 < 1.1), see docstring
         "params": {
             "btc_shock_pct": 0.0035,  # |BTC 1m return| that counts as a shock (down only)
             "fresh_min": 6,           # shock bar must be this recent (>= backtest step of 5m)
             "low_lookback_min": 45,   # SL reference: alt's low over this window (the flush low)
             "atr_period": 14,         # 5m ATR for the SL buffer
-            "sl_atr_buf": 0.4,        # SL this far below the reference low
+            "sl_atr_buf": 1.0,        # SL this far below the reference low (as gate-tested)
             "tp_r": 1.5,              # take-profit in R multiples of entry-to-SL
-            "min_sl_pct": 0.006,      # skip if stop closer than 0.6% (fees dominate the R)
+            "min_sl_pct": 0.01,       # skip if stop closer than 1% (as gate-tested)
             "max_sl_pct": 0.03,       # skip if stop further than 3%
             "max_hold_min": 300,      # bounce is spent by ~4-5h (per-event medians peak at 4h)
         },
