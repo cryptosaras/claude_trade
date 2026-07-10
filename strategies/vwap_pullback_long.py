@@ -22,8 +22,11 @@ class VwapPullbackLong(Strategy):
         "description": "BULL: long 5m stretch >1.5 ATR below day-VWAP with RSI<32, target VWAP",
         "groups": ["mid_alts"],
         "regimes": ["BULL"],
-        # paused = pre-gate: backtest tuning + held-out first, then incubate
-        "status": "paused",
+        # FAILED the gate 2026-07-10, never traded live: 21d PF 0.75 (n=111,
+        # -2270), 7d PF 0.69 (n=111, -2648). A >1.5-ATR dip below VWAP in BULL
+        # is a breakdown, not a pullback — shorts fade greed, longs catch
+        # knives. Dead; don't revive without a new mechanism.
+        "status": "retired",
         "params": {
             "stretch_atr": 1.5,
             "rsi_period": 14, "rsi_max": 32,
