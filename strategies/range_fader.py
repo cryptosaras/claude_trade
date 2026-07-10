@@ -11,9 +11,12 @@ from app.common import indicators as ind  # noqa: E402
 class RangeFader(Strategy):
     meta = {
         "name": "range_fader",
-        "version": 1,
+        "version": 2,
         "description": "15m Bollinger(20,2.2) band touch + RSI extreme, target mid-band",
-        "groups": ["majors", "large_alts"],
+        # v2 2026-07-10: dropped majors on live evidence — large_alts PF 1.21
+        # (n=45, +654) vs majors PF 0.76 (n=21, -414). BTC/ETH ranges too clean;
+        # the band-touch edge lives in sloppier large-alt books.
+        "groups": ["large_alts"],
         "regimes": ["SIDE"],
         "status": "active",
         "params": {

@@ -26,7 +26,10 @@ class SweepReclaim(Strategy):
         "regimes": ["BULL", "BEAR"],
         # passed the gate 2026-07-05: held-out symbols 21d PF 1.61 (n=37);
         # weak spot: last-7d slice PF 0.46 — incubation decides (kill < 1.15)
-        "status": "incubating",
+        # retired 2026-07-10 at incubation judgment: n=32, PF 0.72, net -663.
+        # memes PF 0.41 (n=13) toxic, mid_alts PF 1.00 (n=19) no edge — the
+        # last-7d weakness was the real signal, not the held-out 1.61.
+        "status": "retired",
         "params": {
             "lookback_bars": 132,   # 11h of 5m bars define the reference extreme
             "gap_bars": 3,          # extreme must predate the sweep by this many bars

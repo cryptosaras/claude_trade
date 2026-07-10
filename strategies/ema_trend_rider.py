@@ -15,7 +15,10 @@ class EmaTrendRider(Strategy):
         "description": "15m uptrend (EMA50>EMA200), enter long on RSI pullback turning up",
         "groups": ["majors", "large_alts"],
         "regimes": ["BULL"],
-        "status": "active",
+        # retired 2026-07-10: PF 0.40, n=39, wr 18%, net -1554 in its intended
+        # BULL regime (retire rule: PF<0.9 after 30+). Re-entered immediately
+        # after every SL in chop; trend-following keeps failing on this tape.
+        "status": "retired",
         "params": {
             "ema_fast": 50, "ema_slow": 200,
             "rsi_period": 14, "rsi_pullback": 45,
