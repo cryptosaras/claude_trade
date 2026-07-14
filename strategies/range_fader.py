@@ -16,9 +16,16 @@ class RangeFader(Strategy):
         # v2 2026-07-10: dropped majors on live evidence — large_alts PF 1.21
         # (n=45, +654) vs majors PF 0.76 (n=21, -414). BTC/ETH ranges too clean;
         # the band-touch edge lives in sloppier large-alt books.
+        # RETIRED 2026-07-14: forward evidence invalidated the v2 promotion. The
+        # n=45 PF 1.21 large_alts sample was overfit/lucky — forward it went
+        # PF 0.68 over 71 trades (7d, -1707) in its exact SIDE/large_alts lane;
+        # lifetime large_alts PF 0.81 (n=85, -1172) + majors 0.76 (n=21, -414).
+        # PF<0.9 with n>>30 in the intended regime = retire rule. Biggest bleeder
+        # of the Jul 11->14 drawdown. Fading the upper band just shorts strength
+        # that keeps grinding (wr 25%). Same failure mode as vwap fade in BULL.
         "groups": ["large_alts"],
         "regimes": ["SIDE"],
-        "status": "active",
+        "status": "retired",
         "params": {
             "bb_period": 20, "bb_k": 2.2,
             "rsi_period": 14, "rsi_low": 28, "rsi_high": 72,
