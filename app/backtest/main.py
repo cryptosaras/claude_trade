@@ -3,6 +3,12 @@ engine uses (memory broker instead of DB broker).
 
 CLI:  python -m app.backtest.main --strategy range_fader --days 21
       python -m app.backtest.main --strategy all --days 30 --step-minutes 5
+      python -m app.backtest.main --strategy X --days 14 --end 2026-07-16T00:00
+
+Pass --end to pin the window: without it `end = now()` drifts between runs and
+the result is not reproducible (a shift in the earliest entries cascades through
+the 6 position slots). Any number used to make a decision needs a pinned --end
+and two identical runs.
 """
 import argparse
 import datetime as dt
@@ -17,20 +23,22 @@ from ..engine.account import Broker
 from ..engine.loader import load_strategies
 
 
-def load_history(symbols: list[str], start: dt.datetime,
+def load_history(symbols: list[str], start: dt.datetime, end: dt.datetime,
                  tf: str = "1m") -> dict[str, pd.DataFrame]:
     out = {}
     for sym in symbols:
         rows = db.qd(
             "SELECT ts, o, h, l, c, v FROM candles WHERE symbol=%s AND tf=%s "
-            "AND ts >= %s ORDER BY ts", (sym, tf, start))
+            "AND ts >= %s AND ts <= %s ORDER BY ts", (sym, tf, start, end))
         if rows:
             out[sym] = pd.DataFrame(rows).set_index("ts")
     return out
 
 
-def regime_series(start: dt.datetime) -> list[tuple[dt.datetime, str]]:
-    rows = db.q("SELECT ts, label FROM regime WHERE ts >= %s ORDER BY ts", (start,))
+def regime_series(start: dt.datetime,
+                  end: dt.datetime) -> list[tuple[dt.datetime, str]]:
+    rows = db.q("SELECT ts, label FROM regime WHERE ts >= %s AND ts <= %s "
+                "ORDER BY ts", (start, end))
     return [(r[0], r[1]) for r in rows]
 
 
@@ -43,12 +51,13 @@ def regime_at(series, ts, default="SIDE") -> str:
     return label
 
 
-def funding_series(symbols: list[str],
-                   start: dt.datetime) -> dict[str, list[tuple[dt.datetime, float]]]:
+def funding_series(symbols: list[str], start: dt.datetime,
+                   end: dt.datetime) -> dict[str, list[tuple[dt.datetime, float]]]:
     """symbol -> ascending (ts, rate) from the hourly funding snapshots the
     collector stores — the rates that actually prevailed, not today's."""
     rows = db.q("SELECT symbol, ts, rate FROM funding WHERE symbol = ANY(%s) "
-                "AND ts >= %s AND rate IS NOT NULL ORDER BY ts", (symbols, start))
+                "AND ts >= %s AND ts <= %s AND rate IS NOT NULL ORDER BY ts",
+                (symbols, start, end))
     out: dict[str, list[tuple[dt.datetime, float]]] = {}
     for sym, ts, rate in rows:
         out.setdefault(sym, []).append((ts, float(rate)))
@@ -69,8 +78,21 @@ def funding_at(series: dict, idx: dict, ts: dt.datetime) -> dict[str, float]:
     return rates
 
 
+def funding_asof(symbols: list[str], end: dt.datetime) -> dict[str, float]:
+    """Newest stored rate at or before `end`, per symbol — the gap-filler for
+    symbols/periods from before funding collection began. Read from the
+    append-only funding table rather than the `tickers` snapshot, which the
+    collector overwrites every cycle and which would make a run unreproducible.
+    """
+    rows = db.q("SELECT DISTINCT ON (symbol) symbol, rate FROM funding "
+                "WHERE symbol = ANY(%s) AND ts <= %s AND rate IS NOT NULL "
+                "ORDER BY symbol, ts DESC", (symbols, end))
+    return {sym: float(rate) for sym, rate in rows}
+
+
 def run_backtest(strategy_name: str, days: int, step_minutes: int = 5,
-                 symbols: list[str] | None = None) -> dict:
+                 symbols: list[str] | None = None,
+                 end: dt.datetime | None = None) -> dict:
     if step_minutes < 1:
         return {"error": "step_minutes must be >= 1"}
     cfg = load_settings()
@@ -85,27 +107,32 @@ def run_backtest(strategy_name: str, days: int, step_minutes: int = 5,
         for s in strategies:
             s.runtime_status = "active"
     syms = symbols or uni["symbols"]
-    start = dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=days)
+    # every DB read below is bounded by `end`, so a pinned --end makes the run
+    # reproducible: the source tables are append-only, so bounding is equivalent
+    # to snapshotting them. Without it, `end = now()` drifts between runs and a
+    # tiny shift in the earliest entries cascades through the 6 position slots.
+    end = end or dt.datetime.now(dt.timezone.utc)
+    start = end - dt.timedelta(days=days)
     # full-universe history: --symbols restricts what may be TRADED, not what a
     # strategy SEES — cross-symbol signals (group baskets, ctx.btc) must be
     # computed from the same symbols live and in symbol-split holdouts
     history = load_history(uni["symbols"],
-                           start - dt.timedelta(minutes=cfg["engine"]["candle_lookback"]))
-    history_1h = load_history(uni["symbols"], start - dt.timedelta(days=30), tf="1h")
+                           start - dt.timedelta(minutes=cfg["engine"]["candle_lookback"]),
+                           end)
+    history_1h = load_history(uni["symbols"], start - dt.timedelta(days=30), end,
+                              tf="1h")
     if not history:
         return {"error": "no candle history in DB for the requested window"}
-    regimes = regime_series(start - dt.timedelta(days=2))
-    # historical funding, as-of each step; the current ticker snapshot only
-    # fills gaps (symbols/periods from before funding collection began)
-    funding_hist = funding_series(syms, start - dt.timedelta(days=2))
-    funding_snap = {r[0]: float(r[1] or 0) for r in
-                    db.q("SELECT symbol, funding_rate FROM tickers")}
+    regimes = regime_series(start - dt.timedelta(days=2), end)
+    # historical funding, as-of each step; the as-of-end snapshot only fills
+    # gaps (symbols/periods from before funding collection began)
+    funding_hist = funding_series(syms, start - dt.timedelta(days=2), end)
+    funding_snap = funding_asof(syms, end)
     funding_idx: dict[str, int] = {}
 
     broker = Broker(cfg, mode="mem")
     lookback = cfg["engine"]["candle_lookback"]
     t = start.replace(second=0, microsecond=0)
-    end = dt.datetime.now(dt.timezone.utc)
     last_settle = None
     step_delta = dt.timedelta(minutes=step_minutes)
     while t < end:
@@ -194,9 +221,19 @@ def main() -> None:
     ap.add_argument("--days", type=int, default=21)
     ap.add_argument("--step-minutes", type=int, default=5)
     ap.add_argument("--symbols", nargs="*", default=None)
+    ap.add_argument("--end", default=None,
+                    help="pin the window end, ISO8601 UTC (e.g. 2026-07-16T00:00). "
+                         "Defaults to now, which is NOT reproducible — pass a "
+                         "closed past minute whenever a number must be trusted.")
     args = ap.parse_args()
+    end = None
+    if args.end:
+        end = dt.datetime.fromisoformat(args.end)
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=dt.timezone.utc)
     db.wait_for_db()
-    result = run_backtest(args.strategy, args.days, args.step_minutes, args.symbols)
+    result = run_backtest(args.strategy, args.days, args.step_minutes, args.symbols,
+                          end)
     print(json.dumps(result, indent=2, default=str))
 
 
