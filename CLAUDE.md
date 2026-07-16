@@ -28,8 +28,11 @@ strategies based on evidence.
 1. Work in the local repo clone; **never edit files directly on the VPS**
    (autopull does `git reset --hard` and will destroy manual edits).
 2. Edit/create strategy files, bump `meta.version`, update `meta` fields.
-3. Validate locally if possible, then backtest **on the VPS** (it has the data):
-   `ssh ... "cd /opt/claude_trade && docker compose exec -T api python -m app.backtest.main --strategy NAME --days 14"`
+3. Validate locally if possible, then backtest **on the VPS** (it has the data).
+   **Always pass `--end` (a closed past minute, UTC)** — without it the window
+   ends at `now()`, which drifts between runs and makes the result
+   unreproducible (see the validation gate):
+   `ssh ... "cd /opt/claude_trade && docker compose exec -T api python -m app.backtest.main --strategy NAME --days 14 --end 2026-07-16T00:00"`
 4. Commit with a message explaining the evidence, push to `main`.
 5. VPS autopulls within 2 min; the engine hot-reloads changed strategy files
    (watch `/api/events` for "strategy reloaded").
@@ -83,6 +86,15 @@ the regime anchor.
 
 ## Validation gate — no strategy goes active without passing
 
+0. **Pin the window, and prove it.** Every backtest you base a decision on must
+   pass `--end <closed past minute>`. Unpinned runs are not reproducible: the
+   window end drifts and a tiny shift in the earliest entries cascades through
+   the 6 position slots (this once turned one config into PF 0.82 *and* 0.72,
+   minutes apart). Run the same pinned command **twice and require identical
+   n/PF/net** before trusting a number. Caveat: a pinned window is reproducible
+   only while the universe gains no new symbols — the collector backfills
+   *past-dated* candles/funding for newly discovered symbols, which can change
+   an old window. Re-pin and re-run twins if a comparison spans days.
 1. **Backtest, tuning window**: develop against e.g. `--days 21`.
 2. **Held-out check**: it must also be profitable on a window you did NOT tune
    on (e.g. run `--days 7` after tuning on days 21; or different symbols).
