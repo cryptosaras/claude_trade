@@ -39,7 +39,7 @@ class PdhlSweep(Strategy):
         "description": "5m sweep of prior-day H/L on volume that closes back inside -> fade it",
         "groups": ["mid_alts"],
         "regimes": ["SIDE", "BEAR"],
-        "status": "incubating",
+        "status": "retired",
         "params": {
             "wick_atr": 0.6,      # poke must exceed PDH/PDL by this many ATR
             "vol_mult": 2.5,      # sweep-bar volume vs 20-bar average
