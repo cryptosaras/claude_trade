@@ -13,9 +13,12 @@ target (big reward) vs the same 1.4-ATR stop -> reward:risk rises with stretch.
 This also REFUTES the parabolic-cap hypothesis (6+ is the best bucket, not the
 worst) -> vwap_revert_short_capped retired.
 Status incubating per the validation gate (edited strategy). Judge on trades
-with entry_ts AFTER this deploy only (old-floor trades still in the window):
-promote to active if forward mid_alts SIDE PF >= 1.15 at >= 20 trades; if
-forward PF < 1.0 at n >= 20, revert the floor.
+with entry_ts AFTER the 2026-07-18T06:16Z deploy only (old-floor trades still
+in the window). Pre-registered rule:
+  - PROMOTE to active if forward mid_alts SIDE PF >= 1.15 at n >= 20 AND
+    >= 5 days live (both, per the gate -- n>=20 alone arrives in ~2.5 days).
+  - If forward PF < 1.0 at n >= 20: do NOT restore floor 1.5 (proven to bleed).
+    Re-examine -- try a different floor or conclude the edge decayed.
 """
 import sys
 from pathlib import Path
