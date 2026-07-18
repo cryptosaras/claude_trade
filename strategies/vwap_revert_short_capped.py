@@ -1,8 +1,14 @@
-"""TEST VARIANT (paused) of vwap_revert_short: adds an UPPER stretch cap so we
-stop shorting parabolic runaways (APT/EIGEN at 7-10 ATR above VWAP that keep
-ripping and take 4-6 consecutive stops). Cap is read from env STRETCH_MAX so a
-backtest sweep can try values without re-pushing. Not for live trading — status
-paused; --strategy forces it active only inside an explicit backtest."""
+"""RETIRED 2026-07-18 — premise refuted on live data. This variant's hypothesis
+was that shorting parabolic runaways (high stretch) is what costs the strategy.
+Bucketing 278 live vwap_revert_short trades by TRUE logged entry stretch shows
+the OPPOSITE: stretch >= 4.5 ATR is the most profitable lane (PF ~1.5, the best
+bucket), and the losers are LOW-stretch entries. An upper cap would remove the
+edge. The actionable change was a higher FLOOR, not a cap — shipped as
+vwap_revert_short v3 (stretch_atr 4.5). Do not re-run the cap sweep; kept only
+as a record. See reports/2026-07-18.
+
+Original: TEST VARIANT (paused) of vwap_revert_short: adds an UPPER stretch cap
+so we stop shorting parabolic runaways. Cap read from env STRETCH_MAX."""
 import os
 import sys
 from pathlib import Path
@@ -20,7 +26,7 @@ class VwapRevertShortCapped(Strategy):
         "description": "vwap_revert_short + upper stretch cap (parabolic filter)",
         "groups": ["mid_alts"],
         "regimes": ["SIDE", "BEAR"],
-        "status": "paused",
+        "status": "retired",
         "params": {
             "stretch_atr": 1.5,
             "stretch_atr_max": float(os.environ.get("STRETCH_MAX", "4.0")),
