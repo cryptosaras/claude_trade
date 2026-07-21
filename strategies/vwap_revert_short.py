@@ -19,6 +19,23 @@ in the window). Pre-registered rule:
     >= 5 days live (both, per the gate -- n>=20 alone arrives in ~2.5 days).
   - If forward PF < 1.0 at n >= 20: do NOT restore floor 1.5 (proven to bleed).
     Re-examine -- try a different floor or conclude the edge decayed.
+
+2026-07-21: the rule FIRED and the re-examine is done -> PAUSED, retire
+recommended (human call). Forward n=25, net -823, PF 0.50, win 16% vs the same
+population pre-deploy n=111, PF 1.52. Three partitions were tested for a
+rescuing filter; all three refute one and point the SAME way -- the forward
+sample is uniformly worse, not worse in a subset:
+  - BTC trend at entry: historical >=4.5 is BEST when BTC rises (PF 1.79,
+    n=52) -- so "the forward window was a BTC uptrend" is NOT an excuse.
+    Forward loses in both buckets (BTC rising PF 0.96 n=12; not rising 0.21 n=13).
+  - Repeat entries (the TRBx5 / JASMYx4 / SYNx3 cascades): historically repeats
+    are the GOOD half (PF 2.62 vs 1.01 for first entries) -- a cooldown would
+    have cut the edge, not the losses. Forward both halves lose (0.26 / 0.66).
+  - Symbol concentration: excl TRB still PF 0.69; excl TRB+JASMY still 0.82.
+No floor change is supported either: >=4.5 remains the best historical bucket
+(PF 1.33 n=136 vs 1.14 for all-stretch), and stretch does not separate forward
+winners from losers. Do NOT edit params to chase this; the honest reading is
+edge decay, on a still-modest forward n=25 over 2 days / 7 symbols.
 """
 import sys
 from pathlib import Path
@@ -41,7 +58,9 @@ class VwapRevertShort(Strategy):
         # entirely in stretch >= 4.5 ATR; sub-4.5 entries net-negative held-out.
         "groups": ["mid_alts"],
         "regimes": ["SIDE", "BEAR"],
-        "status": "incubating",
+        # 2026-07-21: paused, not retired -- pre-registered rule fired
+        # (forward PF 0.50 at n=25). Retire is the recommendation, human call.
+        "status": "paused",
         "params": {
             "stretch_atr": 4.5,
             "rsi_period": 14, "rsi_min": 68,
