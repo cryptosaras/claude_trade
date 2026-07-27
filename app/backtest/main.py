@@ -198,6 +198,15 @@ def summarize(broker: Broker, cfg: dict, days: int, strategy_name: str) -> dict:
         "net_return_pct": round(100 * (broker.equity / start_eq - 1), 2),
         "avg_daily_pct": round(100 * (broker.equity / start_eq - 1) / max(days, 1), 3),
         "profit_factor": _pf([t["net_pnl"] for t in trades]),
+        # gross = before fees, after slippage (slippage is inside the fill price).
+        # Reported alongside net because they diagnose different failures: gross
+        # PF ~1.0 means no edge at all, while gross well above net means a real
+        # edge that costs are eating. Live-book measurement 2026-07-27 put the
+        # whole book at gross PF 1.14 / net 0.90 — invisible without this.
+        "gross_pnl": round(sum(t["gross_pnl"] for t in trades), 2),
+        "gross_profit_factor": _pf([t["gross_pnl"] for t in trades]),
+        "gross_edge_per_trade": round(sum(t["gross_pnl"] for t in trades) / len(trades), 2),
+        "fees_per_trade": round(sum(t["fees"] for t in trades) / len(trades), 2),
         "max_drawdown_pct": round(100 * max_dd, 2),
         "avg_hold_hours": round(sum((t["exit_ts"] - t["entry_ts"]).total_seconds()
                                     for t in trades) / len(trades) / 3600, 2),

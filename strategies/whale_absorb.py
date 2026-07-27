@@ -33,7 +33,15 @@ class WhaleAbsorb(Strategy):
         "groups": ["large_alts", "mid_alts", "memes"],
         # SIDE excluded: recent-half PF 0.93 raw / 0.17 with stops in the study
         "regimes": ["BULL", "BEAR"],
-        "status": "paused",  # pre-gate; flip to incubating only if the gate passes
+        # Gate run 2026-07-27 and PASSED — flipping per the pre-gate note below.
+        # Two-window screen, all twins byte-identical:
+        #   Jun 9-25 (in-sample, params came from a 30d study ending Jul 6):
+        #     n=40 PF 2.16
+        #   Jul 13-27 (genuinely out-of-sample, no param change since Jul 6):
+        #     n=26 PF 1.32  (1.15 excluding a 2-trade memes cluster with no losers)
+        # Logic UNCHANGED from v1 — version deliberately NOT bumped so future
+        # version-aligned backtest comparisons stay clean. See reports/2026-07-27.md.
+        "status": "incubating",
         "params": {
             "vol_mult": 2.5,       # signal 15m bar volume vs prior 20-bar average
             "max_rng_atr": 0.9,    # bar range at most this many ATR (no progress)
