@@ -1,0 +1,11 @@
+535 ORDI_USDT  bar 2026-08-03 08:00  entry_offset +0.09 min
+    price_channel: exact_minutes [6, 8, 14] (nearest rel 0.0e+00)
+    sl_channel:    best_m=4 (rel 7.73e-11)  exact_m=[4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]  m14_rel=7.73e-11
+    range/ATR at consistent m: {4: 0.588, 5: 0.588, 6: 0.588, 7: 0.588, 8: 0.588, 9: 0.588, 10: 0.588, 11: 0.588, 12: 0.588, 13: 0.588, 14: 0.588}  complete_bar 0.588  (clause limit 0.9)
+    VERDICT UNDETERMINED (m=14 possible)
+536 INJ_USDT   bar 2026-08-03 08:45  entry_offset +0.09 min
+    price_channel: exact_minutes [] (nearest rel 2.0e-04)
+    sl_channel:    best_m=13 (rel 6.77e-11)  exact_m=[13, 14]  m14_rel=6.77e-11
+    range/ATR at consistent m: {13: 0.72, 14: 0.72}  complete_bar 0.720  (clause limit 0.9)
+    VERDICT UNDETERMINED (m=14 possible)
+MD5 4c2bd0593c3d6f884efa81c4f977c50e

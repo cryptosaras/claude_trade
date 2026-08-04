@@ -1,0 +1,117 @@
+window_bar_close [2026-07-06 00:00:00+00:00 .. 2026-08-03 21:00:00+00:00]
+signal-bar keys with at least one firing depth: 430
+
+=== CLAUSE ATTRIBUTION of the m=0 vs m=1 disagreement ===
+  COMPLETE-ONLY (fires on complete bar, not at m=1): {'vol': 33, 'drop': 8, 'low': 3}
+  TRUNC-ONLY    (fires at m=1, not on complete bar): {'rng': 21, 'drop': 9, 'dist': 1}
+
+################ ALL COLLECTED ################
+SPEC (m=0, what the strategy's own rules license): n= 298  mean  -0.045%  SE 0.128  win%  43.3  PF  0.951
+
+--- REALIZED(R=2): engine fires at m*=max(fires<=R) ---
+  n_realized 362  n_spec 298  EXTRA(engine takes, rules forbid) 64  = +21.5% of spec
+  m* distribution {0: 39, 1: 41, 2: 282}
+  raw    SPEC n= 298  mean  -0.203%  SE 0.213  win%  48.0  PF  0.835
+  raw    REAL n= 362  mean  -0.150%  SE 0.182  win%  48.3  PF  0.869
+  raw    WEDGE (REALIZED - SPEC) = +0.053 pp
+  stop   SPEC n= 298  mean  -0.022%  SE 0.163  win%  40.6  PF  0.976
+  stop   REAL n= 362  mean  -0.030%  SE 0.142  win%  40.3  PF  0.968
+  stop   WEDGE (REALIZED - SPEC) = -0.008 pp
+  stoptp SPEC n= 298  mean  -0.045%  SE 0.128  win%  43.3  PF  0.951
+  stoptp REAL n= 362  mean  -0.017%  SE 0.113  win%  44.2  PF  0.981
+  stoptp WEDGE (REALIZED - SPEC) = +0.028 pp
+  EXTRA  stoptp n=  64  mean  -0.095%  SE 0.245  win%  42.2  PF  0.889
+  EXTRA  concentration: 48 symbols; top5 21.9%; largest ('APE_USDT', 4)
+
+--- REALIZED(R=3): engine fires at m*=max(fires<=R) ---
+  n_realized 387  n_spec 298  EXTRA(engine takes, rules forbid) 89  = +29.9% of spec
+  m* distribution {0: 38, 1: 39, 2: 43, 3: 267}
+  raw    SPEC n= 298  mean  -0.203%  SE 0.213  win%  48.0  PF  0.835
+  raw    REAL n= 387  mean  -0.137%  SE 0.175  win%  48.3  PF  0.880
+  raw    WEDGE (REALIZED - SPEC) = +0.065 pp
+  stop   SPEC n= 298  mean  -0.022%  SE 0.163  win%  40.6  PF  0.976
+  stop   REAL n= 387  mean  -0.032%  SE 0.139  win%  40.6  PF  0.966
+  stop   WEDGE (REALIZED - SPEC) = -0.010 pp
+  stoptp SPEC n= 298  mean  -0.045%  SE 0.128  win%  43.3  PF  0.951
+  stoptp REAL n= 387  mean  -0.054%  SE 0.109  win%  43.7  PF  0.941
+  stoptp WEDGE (REALIZED - SPEC) = -0.009 pp
+  EXTRA  stoptp n=  89  mean  -0.213%  SE 0.206  win%  42.7  PF  0.771
+  EXTRA  concentration: 59 symbols; top5 23.6%; largest ('INTCSTOCK_USDT', 6)
+
+--- REALIZED(R=5): engine fires at m*=max(fires<=R) ---
+  n_realized 430  n_spec 298  EXTRA(engine takes, rules forbid) 132  = +44.3% of spec
+  m* distribution {0: 37, 1: 37, 2: 36, 3: 61, 4: 33, 5: 226}
+  raw    SPEC n= 298  mean  -0.203%  SE 0.213  win%  48.0  PF  0.835
+  raw    REAL n= 430  mean  -0.150%  SE 0.164  win%  47.7  PF  0.868
+  raw    WEDGE (REALIZED - SPEC) = +0.052 pp
+  stop   SPEC n= 298  mean  -0.022%  SE 0.163  win%  40.6  PF  0.976
+  stop   REAL n= 430  mean  -0.097%  SE 0.130  win%  40.2  PF  0.902
+  stop   WEDGE (REALIZED - SPEC) = -0.074 pp
+  stoptp SPEC n= 298  mean  -0.045%  SE 0.128  win%  43.3  PF  0.951
+  stoptp REAL n= 430  mean  -0.081%  SE 0.106  win%  43.3  PF  0.915
+  stoptp WEDGE (REALIZED - SPEC) = -0.036 pp
+  EXTRA  stoptp n= 132  mean  -0.341%  SE 0.182  win%  40.2  PF  0.674
+  EXTRA  concentration: 78 symbols; top5 20.5%; largest ('INTCSTOCK_USDT', 8)
+
+--- DESIGN (b): SPEC set entered k minutes past the bar boundary ---
+  lag  0 min  stoptp n= 298  mean  -0.045%  SE 0.128  win%  43.3  PF  0.951
+  lag  1 min  stoptp n= 298  mean  +0.006%  SE 0.129  win%  44.3  PF  1.007   (paired subset n=298, lag0 on same subset mean -0.045%)
+  lag  2 min  stoptp n= 298  mean  -0.042%  SE 0.125  win%  43.3  PF  0.953   (paired subset n=298, lag0 on same subset mean -0.045%)
+  lag  3 min  stoptp n= 298  mean  -0.046%  SE 0.125  win%  45.0  PF  0.949   (paired subset n=298, lag0 on same subset mean -0.045%)
+  lag  5 min  stoptp n= 298  mean  -0.078%  SE 0.124  win%  42.6  PF  0.913   (paired subset n=298, lag0 on same subset mean -0.045%)
+
+################ GROUP SYMBOLS ################
+SPEC (m=0, what the strategy's own rules license): n= 178  mean  -0.279%  SE 0.139  win%  38.8  PF  0.693
+
+--- REALIZED(R=2): engine fires at m*=max(fires<=R) ---
+  n_realized 220  n_spec 178  EXTRA(engine takes, rules forbid) 42  = +23.6% of spec
+  m* distribution {0: 23, 1: 29, 2: 168}
+  raw    SPEC n= 178  mean  -0.579%  SE 0.234  win%  42.7  PF  0.530
+  raw    REAL n= 220  mean  -0.475%  SE 0.196  win%  43.6  PF  0.580
+  raw    WEDGE (REALIZED - SPEC) = +0.104 pp
+  stop   SPEC n= 178  mean  -0.362%  SE 0.149  win%  35.4  PF  0.620
+  stop   REAL n= 220  mean  -0.338%  SE 0.129  win%  35.5  PF  0.636
+  stop   WEDGE (REALIZED - SPEC) = +0.024 pp
+  stoptp SPEC n= 178  mean  -0.279%  SE 0.139  win%  38.8  PF  0.693
+  stoptp REAL n= 220  mean  -0.227%  SE 0.121  win%  40.0  PF  0.739
+  stoptp WEDGE (REALIZED - SPEC) = +0.052 pp
+  EXTRA  stoptp n=  42  mean  -0.335%  SE 0.232  win%  35.7  PF  0.602
+  EXTRA  concentration: 30 symbols; top5 28.6%; largest ('APE_USDT', 4)
+
+--- REALIZED(R=3): engine fires at m*=max(fires<=R) ---
+  n_realized 236  n_spec 178  EXTRA(engine takes, rules forbid) 58  = +32.6% of spec
+  m* distribution {0: 22, 1: 27, 2: 26, 3: 161}
+  raw    SPEC n= 178  mean  -0.579%  SE 0.234  win%  42.7  PF  0.530
+  raw    REAL n= 236  mean  -0.459%  SE 0.186  win%  43.6  PF  0.587
+  raw    WEDGE (REALIZED - SPEC) = +0.120 pp
+  stop   SPEC n= 178  mean  -0.362%  SE 0.149  win%  35.4  PF  0.620
+  stop   REAL n= 236  mean  -0.351%  SE 0.125  win%  35.6  PF  0.627
+  stop   WEDGE (REALIZED - SPEC) = +0.011 pp
+  stoptp SPEC n= 178  mean  -0.279%  SE 0.139  win%  38.8  PF  0.693
+  stoptp REAL n= 236  mean  -0.267%  SE 0.118  win%  39.0  PF  0.703
+  stoptp WEDGE (REALIZED - SPEC) = +0.012 pp
+  EXTRA  stoptp n=  58  mean  -0.394%  SE 0.207  win%  37.9  PF  0.560
+  EXTRA  concentration: 36 symbols; top5 31.0%; largest ('APE_USDT', 5)
+
+--- REALIZED(R=5): engine fires at m*=max(fires<=R) ---
+  n_realized 260  n_spec 178  EXTRA(engine takes, rules forbid) 82  = +46.1% of spec
+  m* distribution {0: 21, 1: 26, 2: 22, 3: 40, 4: 12, 5: 139}
+  raw    SPEC n= 178  mean  -0.579%  SE 0.234  win%  42.7  PF  0.530
+  raw    REAL n= 260  mean  -0.479%  SE 0.178  win%  43.5  PF  0.575
+  raw    WEDGE (REALIZED - SPEC) = +0.100 pp
+  stop   SPEC n= 178  mean  -0.362%  SE 0.149  win%  35.4  PF  0.620
+  stop   REAL n= 260  mean  -0.380%  SE 0.120  win%  36.2  PF  0.606
+  stop   WEDGE (REALIZED - SPEC) = -0.018 pp
+  stoptp SPEC n= 178  mean  -0.279%  SE 0.139  win%  38.8  PF  0.693
+  stoptp REAL n= 260  mean  -0.266%  SE 0.115  win%  39.6  PF  0.710
+  stoptp WEDGE (REALIZED - SPEC) = +0.013 pp
+  EXTRA  stoptp n=  82  mean  -0.463%  SE 0.190  win%  37.8  PF  0.532
+  EXTRA  concentration: 44 symbols; top5 26.8%; largest ('APE_USDT', 6)
+
+--- DESIGN (b): SPEC set entered k minutes past the bar boundary ---
+  lag  0 min  stoptp n= 178  mean  -0.279%  SE 0.139  win%  38.8  PF  0.693
+  lag  1 min  stoptp n= 178  mean  -0.242%  SE 0.139  win%  38.8  PF  0.727   (paired subset n=178, lag0 on same subset mean -0.279%)
+  lag  2 min  stoptp n= 178  mean  -0.239%  SE 0.138  win%  39.3  PF  0.729   (paired subset n=178, lag0 on same subset mean -0.279%)
+  lag  3 min  stoptp n= 178  mean  -0.247%  SE 0.138  win%  42.1  PF  0.718   (paired subset n=178, lag0 on same subset mean -0.279%)
+  lag  5 min  stoptp n= 178  mean  -0.304%  SE 0.135  win%  38.8  PF  0.655   (paired subset n=178, lag0 on same subset mean -0.279%)
+MD5 1433dd958b3561b5534792cfa6189fbf

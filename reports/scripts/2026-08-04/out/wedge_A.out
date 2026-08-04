@@ -1,0 +1,115 @@
+window_bar_close [2026-07-06 00:00:00+00:00 .. 2026-08-03 21:00:00+00:00]
+symbols_used 131 of 206 collected  (group symbols among them: 71)
+evaluable_bars 360782  dropped_partial_1m_buckets 5
+instrument_check max|ATR_recomputed(m=0) - ind.atr| = 2.842e-14 (must be ~0)
+
+=== POWER CHECK (base rate of clause flips at m=1, run before any null) ===
+bars_with_ANY_clause_flip 18644  of 360782  rate 5.1677%
+  flip_vol       3082  rate 0.8543%
+  flip_rng       9725  rate 2.6955%
+  flip_low        841  rate 0.2331%
+  flip_drop      3202  rate 0.8875%
+  flip_dist      2792  rate 0.7739%
+
+=== ALL COLLECTED ===
+m=0 (SPECIFIED strategy, complete bars): 298 signals
+m=1:  286 signals | TRUNC-ONLY   30 | BOTH  256 | COMPLETE-ONLY   42
+m=2:  282 signals | TRUNC-ONLY   56 | BOTH  226 | COMPLETE-ONLY   72
+m=3:  267 signals | TRUNC-ONLY   70 | BOTH  197 | COMPLETE-ONLY  101
+m=4:  228 signals | TRUNC-ONLY   74 | BOTH  154 | COMPLETE-ONLY  144
+m=5:  226 signals | TRUNC-ONLY   92 | BOTH  134 | COMPLETE-ONLY  164
+union m=1..5 (CEILING): 393 signals | TRUNC-ONLY 132 | BOTH 261 | COMPLETE-ONLY 37
+
+--- ALL COLLECTED: m=1 outcomes ---
+  [W1 spec-priced] m=0 SPEC raw n= 298  mean  -0.203%  SE 0.213  win%  48.0  PF 0.835
+  [W1 spec-priced] m=1 ENGINE raw n= 286  mean  -0.013%  SE 0.203  win%  51.0  PF 0.987
+  [W1 spec-priced] m=0 SPEC stop n= 298  mean  -0.022%  SE 0.163  win%  40.6  PF 0.976
+  [W1 spec-priced] m=1 ENGINE stop n= 286  mean  +0.068%  SE 0.161  win%  43.4  PF 1.080
+  [W1 spec-priced] m=0 SPEC stoptp n= 298  mean  -0.045%  SE 0.128  win%  43.3  PF 0.951
+  [W1 spec-priced] m=1 ENGINE stoptp n= 286  mean  +0.077%  SE 0.127  win%  46.2  PF 1.094
+  ------------------------------------------------------------
+  [W2 engine-priced] m=0 SPEC raw n= 298  mean  -0.203%  SE 0.213  win%  48.0  PF 0.835
+  [W2 engine-priced] m=1 ENGINE raw n= 286  mean  +0.004%  SE 0.204  win%  51.7  PF 1.004
+  [W2 engine-priced] m=0 SPEC stop n= 298  mean  -0.022%  SE 0.163  win%  40.6  PF 0.976
+  [W2 engine-priced] m=1 ENGINE stop n= 286  mean  +0.080%  SE 0.162  win%  43.4  PF 1.093
+  [W2 engine-priced] m=0 SPEC stoptp n= 298  mean  -0.045%  SE 0.128  win%  43.3  PF 0.951
+  [W2 engine-priced] m=1 ENGINE stoptp n= 286  mean  +0.124%  SE 0.128  win%  46.9  PF 1.153
+  ------------------------------------------------------------
+  TRUNC-ONLY  stoptp                   n=  30  mean  +0.015%  SE 0.306  win%  43.3  PF 1.022
+  BOTH(eng)   stoptp                   n= 256  mean  +0.137%  SE 0.138  win%  47.3  PF 1.166
+  COMPL-ONLY  stoptp                   n=  42  mean  -0.839%  SE 0.317  win%  26.2  PF 0.386
+
+--- ALL COLLECTED: m=2 outcomes ---
+  [W1 spec-priced] m=0 SPEC raw n= 298  mean  -0.203%  SE 0.213  win%  48.0  PF 0.835
+  [W1 spec-priced] m=2 ENGINE raw n= 282  mean  -0.182%  SE 0.186  win%  48.9  PF 0.832
+  [W1 spec-priced] m=0 SPEC stop n= 298  mean  -0.022%  SE 0.163  win%  40.6  PF 0.976
+  [W1 spec-priced] m=2 ENGINE stop n= 282  mean  -0.027%  SE 0.137  win%  41.8  PF 0.968
+  [W1 spec-priced] m=0 SPEC stoptp n= 298  mean  -0.045%  SE 0.128  win%  43.3  PF 0.951
+  [W1 spec-priced] m=2 ENGINE stoptp n= 282  mean  +0.048%  SE 0.126  win%  44.7  PF 1.058
+  ------------------------------------------------------------
+  [W2 engine-priced] m=0 SPEC raw n= 298  mean  -0.203%  SE 0.213  win%  48.0  PF 0.835
+  [W2 engine-priced] m=2 ENGINE raw n= 282  mean  -0.174%  SE 0.187  win%  49.3  PF 0.841
+  [W2 engine-priced] m=0 SPEC stop n= 298  mean  -0.022%  SE 0.163  win%  40.6  PF 0.976
+  [W2 engine-priced] m=2 ENGINE stop n= 282  mean  -0.019%  SE 0.139  win%  41.8  PF 0.978
+  [W2 engine-priced] m=0 SPEC stoptp n= 298  mean  -0.045%  SE 0.128  win%  43.3  PF 0.951
+  [W2 engine-priced] m=2 ENGINE stoptp n= 282  mean  +0.083%  SE 0.126  win%  46.1  PF 1.101
+  ------------------------------------------------------------
+  TRUNC-ONLY  stoptp                   n=  56  mean  -0.108%  SE 0.274  win%  42.9  PF 0.880
+  BOTH(eng)   stoptp                   n= 226  mean  +0.130%  SE 0.142  win%  46.9  PF 1.163
+  COMPL-ONLY  stoptp                   n=  72  mean  -0.437%  SE 0.274  win%  37.5  PF 0.647
+
+=== GROUP SYMBOLS ===
+m=0 (SPECIFIED strategy, complete bars): 178 signals
+m=1:  172 signals | TRUNC-ONLY   20 | BOTH  152 | COMPLETE-ONLY   26
+m=2:  168 signals | TRUNC-ONLY   37 | BOTH  131 | COMPLETE-ONLY   47
+m=3:  161 signals | TRUNC-ONLY   47 | BOTH  114 | COMPLETE-ONLY   64
+m=4:  135 signals | TRUNC-ONLY   48 | BOTH   87 | COMPLETE-ONLY   91
+m=5:  139 signals | TRUNC-ONLY   57 | BOTH   82 | COMPLETE-ONLY   96
+union m=1..5 (CEILING): 239 signals | TRUNC-ONLY 82 | BOTH 157 | COMPLETE-ONLY 21
+
+--- GROUP SYMBOLS: m=1 outcomes ---
+  [W1 spec-priced] m=0 SPEC raw n= 178  mean  -0.579%  SE 0.234  win%  42.7  PF 0.530
+  [W1 spec-priced] m=1 ENGINE raw n= 172  mean  -0.478%  SE 0.232  win%  45.9  PF 0.572
+  [W1 spec-priced] m=0 SPEC stop n= 178  mean  -0.362%  SE 0.149  win%  35.4  PF 0.620
+  [W1 spec-priced] m=1 ENGINE stop n= 172  mean  -0.318%  SE 0.148  win%  37.8  PF 0.644
+  [W1 spec-priced] m=0 SPEC stoptp n= 178  mean  -0.279%  SE 0.139  win%  38.8  PF 0.693
+  [W1 spec-priced] m=1 ENGINE stoptp n= 172  mean  -0.223%  SE 0.139  win%  41.3  PF 0.737
+  ------------------------------------------------------------
+  [W2 engine-priced] m=0 SPEC raw n= 178  mean  -0.579%  SE 0.234  win%  42.7  PF 0.530
+  [W2 engine-priced] m=1 ENGINE raw n= 172  mean  -0.465%  SE 0.233  win%  46.5  PF 0.582
+  [W2 engine-priced] m=0 SPEC stop n= 178  mean  -0.362%  SE 0.149  win%  35.4  PF 0.620
+  [W2 engine-priced] m=1 ENGINE stop n= 172  mean  -0.317%  SE 0.148  win%  37.8  PF 0.648
+  [W2 engine-priced] m=0 SPEC stoptp n= 178  mean  -0.279%  SE 0.139  win%  38.8  PF 0.693
+  [W2 engine-priced] m=1 ENGINE stoptp n= 172  mean  -0.181%  SE 0.140  win%  41.9  PF 0.783
+  ------------------------------------------------------------
+  TRUNC-ONLY  stoptp                   n=  20  mean  -0.268%  SE 0.296  win%  35.0  PF 0.620
+  BOTH(eng)   stoptp                   n= 152  mean  -0.170%  SE 0.154  win%  42.8  PF 0.801
+  COMPL-ONLY  stoptp                   n=  26  mean  -0.513%  SE 0.342  win%  26.9  PF 0.504
+
+--- GROUP SYMBOLS: m=2 outcomes ---
+  [W1 spec-priced] m=0 SPEC raw n= 178  mean  -0.579%  SE 0.234  win%  42.7  PF 0.530
+  [W1 spec-priced] m=2 ENGINE raw n= 168  mean  -0.590%  SE 0.228  win%  42.9  PF 0.493
+  [W1 spec-priced] m=0 SPEC stop n= 178  mean  -0.362%  SE 0.149  win%  35.4  PF 0.620
+  [W1 spec-priced] m=2 ENGINE stop n= 168  mean  -0.375%  SE 0.135  win%  35.7  PF 0.574
+  [W1 spec-priced] m=0 SPEC stoptp n= 178  mean  -0.279%  SE 0.139  win%  38.8  PF 0.693
+  [W1 spec-priced] m=2 ENGINE stoptp n= 168  mean  -0.239%  SE 0.135  win%  39.3  PF 0.713
+  ------------------------------------------------------------
+  [W2 engine-priced] m=0 SPEC raw n= 178  mean  -0.579%  SE 0.234  win%  42.7  PF 0.530
+  [W2 engine-priced] m=2 ENGINE raw n= 168  mean  -0.603%  SE 0.227  win%  42.9  PF 0.488
+  [W2 engine-priced] m=0 SPEC stop n= 178  mean  -0.362%  SE 0.149  win%  35.4  PF 0.620
+  [W2 engine-priced] m=2 ENGINE stop n= 168  mean  -0.390%  SE 0.135  win%  35.7  PF 0.565
+  [W2 engine-priced] m=0 SPEC stoptp n= 178  mean  -0.279%  SE 0.139  win%  38.8  PF 0.693
+  [W2 engine-priced] m=2 ENGINE stoptp n= 168  mean  -0.208%  SE 0.134  win%  41.1  PF 0.749
+  ------------------------------------------------------------
+  TRUNC-ONLY  stoptp                   n=  37  mean  -0.403%  SE 0.252  win%  35.1  PF 0.552
+  BOTH(eng)   stoptp                   n= 131  mean  -0.153%  SE 0.157  win%  42.7  PF 0.811
+  COMPL-ONLY  stoptp                   n=  47  mean  -0.398%  SE 0.295  win%  36.2  PF 0.632
+
+=== VOID CONDITION (live entries the sl-channel already pinned) ===
+  526 UNI_USDT    2026-07-27 21:15 fires_at_depths [1, 2, 3, 5]  (sl-channel says depth 1-5, and NOT 0)
+  530 JTO_USDT    2026-07-29 03:15 fires_at_depths [1, 2, 3]  (sl-channel says depth 1-2, and NOT 0)
+  527 ORDI_USDT   2026-07-28 17:15 fires_at_depths [0, 1, 2, 3, 4, 5]  (sl-channel says depth 1, and NOT 0)
+
+=== CONCENTRATION (m=1, all collected, TRUNC-ONLY) ===
+  n=30 over 27 symbols; top10 43.3%; largest ALGO_USDT 2 (6.7%)
+MD5 71217eca069913721ccd0631243271c6
